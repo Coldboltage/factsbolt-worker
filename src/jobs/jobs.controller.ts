@@ -66,4 +66,15 @@ export class JobsController {
   async fullJob(@Body() createJobDto: CreateJobDto) {
     return this.jobsService.fullJob(createJobDto);
   }
+
+  @Get('check-url/:url')
+  async checkURL(@Param() url: string) {
+    return this.jobsService.checkURL(url);
+  }
+
+  // Test
+  // @Get('lang/lang-chain-test')
+  // async langChainTest() {
+  //   return this.jobsService.langChainTest();
+  // }
 }
