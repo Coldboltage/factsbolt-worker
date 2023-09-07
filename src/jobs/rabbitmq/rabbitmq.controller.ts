@@ -56,4 +56,20 @@ export class RabbitmqController {
       channel.nack(originalMsg);
     }
   }
+
+  @EventPattern('add_sites')
+  async addWebPages(@Payload() urls: string[], @Ctx() context: RmqContext) {
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    console.log('fired');
+    try {
+      await this.rabbitmqService.addWebPages(urls);
+      // acknowledge the message after processing
+      channel.ack(originalMsg);
+    } catch (error) {
+      console.log(error);
+      // negatively acknowledge the message in case of error
+      channel.nack(originalMsg);
+    }
+  }
 }

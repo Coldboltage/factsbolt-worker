@@ -371,72 +371,72 @@ export class JobsService {
       metadataKeys: ['source'],
     });
 
-    for (const result of cbdResultFilter) {
-      if (result.includes('youtube')) continue;
-      const loader = new PuppeteerWebBaseLoader(result, {
-        launchOptions: {
-          headless: 'new',
-        },
-      });
+    await this.utilsService.webBrowserDocumentProcess(
+      cbdResultFilter,
+      vectorStore,
+    );
 
-      // const loader = new CheerioWebBaseLoader(result);
+    // for (const result of cbdResultFilter) {
+    //   if (result.includes('youtube')) continue;
+    //   const loader = new PuppeteerWebBaseLoader(result, {
+    //     launchOptions: {
+    //       headless: 'new',
+    //     },
+    //   });
 
-      let docs;
+    //   // const loader = new CheerioWebBaseLoader(result);
 
-      try {
-        docs = await loader.load();
-      } catch (error) {
-        // console.log(`${result} failed`);
-        continue;
-      }
+    //   let docs;
 
-      const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
-        chunkSize: 1500, // Roughly double the current estimated chunk size
-        chunkOverlap: 10, // This is arbitrary; adjust based on your needs
-        separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
-      });
+    //   try {
+    //     docs = await loader.load();
+    //   } catch (error) {
+    //     // console.log(`${result} failed`);
+    //     continue;
+    //   }
 
-      const transformer = new MozillaReadabilityTransformer();
+    //   const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
+    //     chunkSize: 1500, // Roughly double the current estimated chunk size
+    //     chunkOverlap: 10, // This is arbitrary; adjust based on your needs
+    //     separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
+    //   });
 
-      const sequence = splitter.pipe(transformer);
+    //   const transformer = new MozillaReadabilityTransformer();
 
-      let newDocuments: Document[];
+    //   const sequence = splitter.pipe(transformer);
 
-      try {
-        newDocuments = await sequence.invoke(docs);
-      } catch (error) {
-        console.log('invoke broke');
-        continue;
-      }
+    //   let newDocuments: Document[];
 
-      const filteredDocuments: Document[] = newDocuments.filter(
-        (doc: Document) => {
-          return doc.pageContent ? true : false;
-        },
-      );
-      try {
-        await vectorStore.delete({
-          filter: {
-            where: {
-              operator: 'Equal',
-              path: ['source'],
-              valueText: result,
-            },
-          },
-        });
-        await vectorStore.addDocuments(filteredDocuments);
-        // await WeaviateStore.fromDocuments(
-        //   filteredDocuments,
-        //   new OpenAIEmbeddings(),
-        //   client,
-        // );
-      } catch (error) {
-        console.log(error);
-        console.log(`${result} failed`);
-      }
+    //   try {
+    //     newDocuments = await sequence.invoke(docs);
+    //   } catch (error) {
+    //     console.log('invoke broke');
+    //     continue;
+    //   }
 
-      console.log('done');
-    }
+    //   const filteredDocuments: Document[] = newDocuments.filter(
+    //     (doc: Document) => {
+    //       return doc.pageContent ? true : false;
+    //     },
+    //   );
+    //   try {
+    //     await vectorStore.delete({
+    //       filter: {
+    //         where: {
+    //           operator: 'Equal',
+    //           path: ['source'],
+    //           valueText: result,
+    //         },
+    //       },
+    //     });
+    //     await vectorStore.addDocuments(filteredDocuments);
+    //   } catch (error) {
+    //     console.log(error);
+    //     console.log(`${result} failed`);
+    //   }
+
+    //   console.log('done');
+    // }
 
     const vectorStoreRetriever = new HydeRetriever({
       vectorStore,

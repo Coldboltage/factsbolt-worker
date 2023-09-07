@@ -1,12 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { CreateRabbitmqDto } from './dto/create-rabbitmq.dto';
 import { UpdateRabbitmqDto } from './dto/update-rabbitmq.dto';
 import { CreateJobDto } from '../dto/create-job.dto';
 import { JobsService } from '../jobs.service';
+import { UtilsService } from '../../utils/utils.service';
+import weaviate from 'weaviate-ts-client';
+import { WeaviateStore } from 'langchain/vectorstores/weaviate';
+import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 
 @Injectable()
-export class RabbitmqService {
-  constructor(private readonly jobsService: JobsService) {}
+export class RabbitmqService implements OnModuleInit {
+  client: any;
+  constructor(
+    private readonly jobsService: JobsService,
+    private readonly utilsService: UtilsService,
+  ) {}
+
+  onModuleInit() {
+    console.log(`The module has been initialized.`);
+    this.client = (weaviate as any).client({
+      scheme: process.env.WEAVIATE_SCHEME || 'http',
+      host: process.env.WEAVIATE_HOST || 'localhost:8080',
+    });
+  }
+
   create(createRabbitmqDto: CreateRabbitmqDto) {
     return 'This action adds a new rabbitmq';
   }
@@ -31,5 +48,14 @@ export class RabbitmqService {
     const createJobDto = new CreateJobDto();
     createJobDto.link = data;
     return this.jobsService.fullJob(createJobDto);
+  }
+
+  async addWebPages(webPages: string[]): Promise<void> {
+    const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
+      client: this.client,
+      indexName: 'Factsbolt',
+      metadataKeys: ['source'],
+    });
+    await this.utilsService.webBrowserDocumentProcess(webPages, vectorStore);
   }
 }
