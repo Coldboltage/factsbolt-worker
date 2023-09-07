@@ -329,6 +329,7 @@ export class JobsService {
     }
 
     console.log(completion.data.choices[0].message);
+    console.log(completion.data.choices[0].message);
     return {
       id: completion.id,
       created: completion.created,
