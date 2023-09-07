@@ -3,6 +3,7 @@ import { RabbitmqService } from './rabbitmq.service';
 import { RabbitmqController } from './rabbitmq.controller';
 import { JobsModule } from '../jobs.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { UtilsModule } from '../../utils/utils.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
       },
     ]),
     forwardRef(() => JobsModule),
+    UtilsModule,
   ],
   controllers: [RabbitmqController],
   providers: [RabbitmqService],
