@@ -702,15 +702,29 @@ export class JobsService {
 
   checkURL(url: string) {
     const youtube = ['youtube', 'youtu.be'];
+    const tiktok = ['tiktok'];
+    const instagram = ['instagram', 'instagr.am'];
     let site: string;
 
     for (const hostname of youtube) {
-      if (url.includes(hostname)) site = 'youtube';
+      if (url.includes(hostname) && !site) site = 'youtube';
+    }
+
+    for (const hostname of tiktok) {
+      if (url.includes(hostname) && !site) site = 'tiktok';
+    }
+
+    for (const hostname of instagram) {
+      if (url.includes(hostname) && !site) site = 'instagram';
     }
 
     switch (site) {
       case 'youtube':
         return 'Youtube';
+      case 'tiktok':
+        return 'TikTok';
+      case 'instagram':
+        return 'Instagram';
       default:
         return 'No Site Found';
     }
