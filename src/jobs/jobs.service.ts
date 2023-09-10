@@ -372,9 +372,8 @@ export class JobsService {
 
     const searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
 
-    const cbdResult = await this.utilsService.searchTerm(searchTerm.query);
-    console.log(cbdResult);
-    const cbdResultFilter = this.utilsService.extractURLs(cbdResult);
+    const searchResults = await this.utilsService.searchTerm(searchTerm.query);
+    const searchResultFilter = this.utilsService.extractURLs(searchResults);
 
     // const embeddings = new OpenAIEmbeddings();
     // const vectorStore = new MemoryVectorStore(embeddings);
@@ -385,10 +384,8 @@ export class JobsService {
       metadataKeys: ['source'],
     });
 
-    console.log(cbdResultFilter)
-
     await this.utilsService.webBrowserDocumentProcess(
-      cbdResultFilter,
+      searchResultFilter,
       vectorStore,
     );
 

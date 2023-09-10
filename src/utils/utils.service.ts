@@ -26,21 +26,33 @@ export class UtilsService {
     const response = await fetch(
       `http://api.serpstack.com/search?access_key=${process.env.SERPSTACK_KEY}&query=${query}`,
     );
+    console.log(
+      `http://api.serpstack.com/search?access_key=${process.env.SERPSTACK_KEY}&query=${query}`,
+    );
     const data = await response.json();
     console.log(data.organic_results);
     return data.organic_results;
   }
 
-  extractURLs(listOfResults: SearchResult[]) {
-    return listOfResults.map((result) => result.url);
+  extractURLs(listOfResults: SearchResult[]): string[] {
+    const urlList = listOfResults
+      .map((result) => result.url)
+      .filter((url) => {
+        if (typeof url === 'string') return true;
+        return false;
+      });
+    this.logger.verbose(`Extracted URLs: ${urlList}`);
+    return urlList;
   }
 
   async webBrowserDocumentProcess(
     siteLinks: string[],
     vectorStore: WeaviateStore,
   ): Promise<void> {
+    this.logger.debug(`siteLink parameter: ${siteLinks}`)
     for (const url of siteLinks) {
-      if (url.includes('youtube')) continue;
+      this.logger.log(`Documenting ${url}`);
+      if (!url || url.includes('youtube')) continue;
       const loader = new PuppeteerWebBaseLoader(url, {
         launchOptions: {
           headless: 'new',
