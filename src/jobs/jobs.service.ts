@@ -79,44 +79,57 @@ export class JobsService {
 
   // Jobs
   async downloadVideo(createJobDto: CreateJobDto): Promise<CompletedVideoJob> {
-    let videoInformation: any;
-    try {
-      videoInformation = await youtubedl(createJobDto.link, {
-        dumpSingleJson: true,
-        noCheckCertificates: true,
-        noWarnings: true,
-        preferFreeFormats: true,
-        addHeader: ['referer:youtube.com', 'user-agent:googlebot'],
-      });
-    } catch (error) {
-      console.error(error);
+    const videoWebsite = this.checkURL(createJobDto.link);
+    switch (videoWebsite) {
+      case 'Youtube':
+        return await this.utilsService.downloadYoutubeJob(createJobDto);
+      case 'TikTok':
+        console.log('Build TikTok bot');
+        return await this.utilsService.downloadTikTokJob(createJobDto);
+      case 'Instagram':
+        console.log('Build Instagram bot');
+        break;
+      default:
+        throw new Error(`no_site_found: ${videoWebsite}`);
     }
+    // let videoInformation: any;
+    // try {
+    //   videoInformation = await youtubedl(createJobDto.link, {
+    //     dumpSingleJson: true,
+    //     noCheckCertificates: true,
+    //     noWarnings: true,
+    //     preferFreeFormats: true,
+    //     addHeader: ['referer:youtube.com', 'user-agent:googlebot'],
+    //   });
+    // } catch (error) {
+    //   console.error(error);
+    // }
 
-    const filteredVideoInformation: VideoJob = {
-      id: videoInformation.id,
-      name: videoInformation.title,
-      link: createJobDto.link,
-    };
+    // const filteredVideoInformation: VideoJob = {
+    //   id: videoInformation.id,
+    //   name: videoInformation.title,
+    //   link: createJobDto.link,
+    // };
 
-    console.log(filteredVideoInformation);
+    // console.log(filteredVideoInformation);
 
-    const audioInformation: AudioInformation = {
-      url: createJobDto.link,
-      filename: stripchar.RSExceptUnsAlpNum(filteredVideoInformation.name),
-      folder: 'src/jobs/downloads', // optional, default: "youtube-exec"
-      quality: 'best', // or "lowest"; default: "best"
-    };
+    // const audioInformation: AudioInformation = {
+    //   url: createJobDto.link,
+    //   filename: stripchar.RSExceptUnsAlpNum(filteredVideoInformation.name),
+    //   folder: 'src/jobs/downloads', // optional, default: "youtube-exec"
+    //   quality: 'best', // or "lowest"; default: "best"
+    // };
 
-    try {
-      await dlAudio(audioInformation);
-      console.log('Audio downloaded successfully! 🔊🎉');
-      return {
-        video: filteredVideoInformation,
-        audio: audioInformation,
-      };
-    } catch (error) {
-      console.error('An error occurred:', error.message);
-    }
+    // try {
+    //   await dlAudio(audioInformation);
+    //   console.log('Audio downloaded successfully! 🔊🎉');
+    //   return {
+    //     video: filteredVideoInformation,
+    //     audio: audioInformation,
+    //   };
+    // } catch (error) {
+    //   console.error('An error occurred:', error.message);
+    // }
   }
 
   async transcribeAudio(
@@ -360,6 +373,7 @@ export class JobsService {
     const searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
 
     const cbdResult = await this.utilsService.searchTerm(searchTerm.query);
+    console.log(cbdResult);
     const cbdResultFilter = this.utilsService.extractURLs(cbdResult);
 
     // const embeddings = new OpenAIEmbeddings();
@@ -370,6 +384,8 @@ export class JobsService {
       indexName: 'Factsbolt',
       metadataKeys: ['source'],
     });
+
+    console.log(cbdResultFilter)
 
     await this.utilsService.webBrowserDocumentProcess(
       cbdResultFilter,
@@ -700,7 +716,7 @@ export class JobsService {
     });
   }
 
-  checkURL(url: string) {
+  checkURL(url: string): string {
     const youtube = ['youtube', 'youtu.be'];
     const tiktok = ['tiktok'];
     const instagram = ['instagram', 'instagr.am'];

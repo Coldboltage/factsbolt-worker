@@ -5,6 +5,17 @@ import { MozillaReadabilityTransformer } from 'langchain/document_transformers/m
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { Document } from 'langchain/document';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
+import { CreateJobDto } from '../jobs/dto/create-job.dto';
+import { VideoJob, AudioInformation } from '../jobs/entities/job.entity';
+import { CompletedVideoJob } from 'factsbolt-types';
+const path = require('path');
+const youtubedl = require('youtube-dl-exec');
+const stripchar = require('stripchar').StripChar;
+const { dlAudio } = require('youtube-exec');
+const { TiktokDL } = require('@tobyg74/tiktok-api-dl');
+const download = require('download');
+const fs = require('fs');
+const ffmpeg = require('fluent-ffmpeg');
 
 @Injectable()
 export class UtilsService {
@@ -72,6 +83,10 @@ export class UtilsService {
         },
       );
 
+      this.logger.debug(
+        `Filtered Documents Amount: ${filteredDocuments.length}`,
+      );
+
       try {
         await vectorStore.delete({
           filter: {
@@ -91,5 +106,109 @@ export class UtilsService {
       console.log('done');
     }
     this.logger.debug('Complete');
+  }
+
+  async downloadTikTokJob(
+    createJobDto: CreateJobDto,
+  ): Promise<CompletedVideoJob> {
+    const downloadedTikTok = await TiktokDL(createJobDto.link);
+
+    const filteredVideoInformation: VideoJob = {
+      id: downloadedTikTok.result.id,
+      name: stripchar.RSExceptUnsAlpNum(downloadedTikTok.result.description),
+      link: createJobDto.link,
+    };
+
+    const realVideoLink = downloadedTikTok.result.video[0];
+
+    const filePath = path.resolve(
+      __dirname,
+      `../../src/jobs/videos/${filteredVideoInformation.name}`,
+    );
+    const finalPath = path.resolve(
+      __dirname,
+      `../../src/jobs/downloads/${filteredVideoInformation.name}.mp3`,
+    );
+
+    let finishedDownload;
+
+    try {
+      finishedDownload = await download(realVideoLink);
+      fs.writeFileSync(`${filePath}.mp4`, finishedDownload);
+
+      console.log('done');
+      await new Promise((resolve, reject) => {
+        ffmpeg(`${filePath}.mp4`)
+          .toFormat(`mp3`)
+          .on('end', () => {
+            console.log('Conversion finished.');
+            resolve(true);
+          })
+          .on('error', (err) => {
+            console.error('Error:', err);
+            reject(err);
+          })
+          .save(finalPath);
+      });
+
+      return {
+        video: filteredVideoInformation,
+        audio: {
+          url: createJobDto.link,
+          filename: filteredVideoInformation.name,
+          folder: 'src/jobs/downloads', // optional, default: "youtube-exec"
+          quality: 'best', // or "lowest"; default: "best"
+        },
+      };
+
+      // fs.writeFileSync(filePath, await download(realVideoLink));
+    } catch (error) {
+      console.log(error);
+    }
+
+    process.exit(0);
+  }
+
+  async downloadYoutubeJob(
+    createJobDto: CreateJobDto,
+  ): Promise<CompletedVideoJob> {
+    let videoInformation: any;
+    try {
+      videoInformation = await youtubedl(createJobDto.link, {
+        dumpSingleJson: true,
+        noCheckCertificates: true,
+        noWarnings: true,
+        preferFreeFormats: true,
+        addHeader: ['referer:youtube.com', 'user-agent:googlebot'],
+      });
+    } catch (error) {
+      console.error(error);
+    }
+
+    const filteredVideoInformation: VideoJob = {
+      id: videoInformation.id,
+      name: videoInformation.title,
+      link: createJobDto.link,
+    };
+
+    console.log(filteredVideoInformation);
+
+    const audioInformation: AudioInformation = {
+      url: createJobDto.link,
+      filename: stripchar.RSExceptUnsAlpNum(filteredVideoInformation.name),
+      folder: 'src/jobs/downloads', // optional, default: "youtube-exec"
+      quality: 'best', // or "lowest"; default: "best"
+    };
+
+    try {
+      await dlAudio(audioInformation);
+      console.log('Audio downloaded successfully! 🔊🎉');
+      return {
+        video: filteredVideoInformation,
+        audio: audioInformation,
+      };
+    } catch (error) {
+      console.error('An error occurred:', error.message);
+    }
   }
 }

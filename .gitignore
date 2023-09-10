@@ -37,3 +37,4 @@ lerna-debug.log*
 # MISC
 *.env
 /src/jobs/downloads
+/src/jobs/videos
