@@ -1,4 +1,3 @@
-import { TensorFlowEmbeddings } from 'langchain/embeddings/tensorflow';
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
