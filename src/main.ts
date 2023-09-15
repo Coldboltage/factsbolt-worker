@@ -15,6 +15,12 @@ async function bootstrap() {
         queue: 'video_queue',
         queueOptions: {
           durable: false,
+          heartbeat: 0, // Setting to 0 disables the heartbeat
+          connectionTimeout: 14400000, // 4 hours in milliseconds (adjust as needed)
+        },
+        socketOptions: {
+          heartbeat: 0, // Setting to 0 disables the heartbeat
+          connectionTimeout: 14400000, // 4 hours in milliseconds (adjust as needed)
         },
       },
     },

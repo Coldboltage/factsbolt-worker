@@ -19,7 +19,7 @@ const { dlAudio } = require('youtube-exec');
 const youtubedl = require('youtube-dl-exec');
 const { Configuration, OpenAIApi } = require('openai');
 const stripchar = require('stripchar').StripChar;
-import { AmendedSpeech, AmendedUtterance, Utterance } from 'factsbolt-types';
+import { AmendedSpeech, AmendedUtterance, JobStatus, Utterance } from 'factsbolt-types';
 import { OpenAI, PromptTemplate } from 'langchain';
 import { CheerioWebBaseLoader } from 'langchain/document_loaders/web/cheerio';
 
@@ -88,6 +88,8 @@ export class JobsService {
         return await this.utilsService.downloadTikTokJob(createJobDto);
       case 'Instagram':
         console.log('Build Instagram bot');
+        await this.utilsService.downloadInstagram(createJobDto);
+        throw new Error('test');
         break;
       default:
         throw new Error(`no_site_found: ${videoWebsite}`);
@@ -235,107 +237,6 @@ export class JobsService {
       completion = await openai.createChatCompletion({
         temperature: 0.01,
         // model: 'gpt-4-0613',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant.',
-          },
-          // {
-          //   role: 'user',
-          //   content: `Please evaluate the following transcript. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points. For each point, identify it as either a verifiable fact, personal fact, grounded speculation, grounded opinion, baseless speculation, baseless opinion, or a question.
-
-          //   Verifiable facts: Identify any statement that presents a clear fact or claim about reality that can be confirmed using publicly accessible data, well-established knowledge in the field, or widely recognized information. Elaborate on why you believe it to be a verifiable fact and provide detailed information and references that support it. Discuss the potential utility of this fact, including how it could be used or applied in different scenarios.
-
-          //   Personal facts: Note any statements that are based on personal experience or knowledge and are true for the individual, but can't be independently verified by others. Discuss the potential utility of this personal fact, including how it may influence understanding or perspective.
-
-          //   Grounded Speculations: Label a statement as grounded speculation if it makes a prediction or guess about the future based on current trends or data. Discuss the current trends, data, or historical events that support this speculation. Evaluate the potential utility or impact if this speculation was acted upon.
-
-          //   Grounded Opinions: Recognize statements of personal preference or judgement as grounded opinions if they are based in well-reasoned thinking or empirical evidence. Discuss the empirical evidence or logical reasoning that supports these grounded opinions, and discuss the potential utility or impact of these grounded opinions if adopted.
-
-          //   Baseless Speculation: Identify statements that speculate or predict without a clear or logical basis in data or facts. As this could potentially be misleading or damaging, no utility analysis will be provided for these points.
-
-          //   Baseless Opinions: Recognize statements of personal judgement or bias that are not backed by evidence or sound reasoning. Like with baseless speculation, no utility analysis will be provided due to the potential for misinformation or harm.
-
-          //   Questions: These are inquiries or requests for information, often seeking clarification or further details on a particular topic. Discuss the utility of these questions in providing greater clarity or understanding.
-
-          //   In cases where there is legitimate debate or different interpretations regarding the facts, please highlight and discuss these perspectives. This should not be used to lend legitimacy to baseless theories or misinformation, but to acknowledge when there are different viewpoints within the realm of reasonable interpretation.
-
-          //   Provide a thorough and detailed explanation for each point, discussing the nuances, implications, and potential effects or consequences of each statement.
-
-          //   After categorizing and explaining each point, provide an in-depth overall assessment of the content. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made.
-
-          //   Following this overall assessment, provide a general conclusion. Instead of categorizing the conversation as a whole, critically evaluate whether the strategies, advice, or opinions expressed align with the best practices as recognized by leading experts, authoritative bodies in the field, or reputable scientific research. Assess whether these strategies, advice, or opinions align with the prevailing consensus among experts in the field. Comment on how the speakers' views align or contrast with these recognized best practices and consensus, not merely what is popular or commonly accepted. Especially note any instances of both grounded and baseless speculation and discuss how they may influence perceptions and understandings of the topic. Then, provide a list of further resources or facts about the topic that can give more context and understanding of the broader issue to the user, in bullet point format. These resources should be from credible sources, and if possible, include direct links for further reference.
-
-          //   Each major statement should be analyzed separately, maintaining a structured and thorough approach throughout the analysis.
-
-          //   Please note that the transcript is an array of speeches from speakers using this format:
-
-          //   export interface AmendedSpeech {
-          //     speaker: string;
-          //     text: string;
-          //   }
-
-          //   You will be given an array after the transcription which will have the type of AmendedSpeech or more.
-
-          //   Video title: ${title}
-          //   Transcript: ${JSON.stringify(transcription, null, 2)}`,
-          // },
-
-          // {
-          //   role: 'user',
-          //   content: `"Please evaluate the following transcript, diving deep into foundational assumptions or beliefs of the speaker. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Avoid surface-level interpretations and strive for depth and nuance. Then, break down each major statement into individual points. For each point, identify it as either a verifiable fact, personal fact, grounded speculation, grounded opinion, baseless speculation, baseless opinion, or a question.
-
-          //   Identify the main target or subject of the speaker's comments. Is the speaker criticizing or commenting on a specific individual, a group of people, a system or institution, or a general concept or idea? Try to determine the primary source of the speaker's sentiment and the main issue at stake, based on their statements.
-
-          //   Verifiable facts: Identify any statement that presents a clear fact or claim about reality that can be confirmed using publicly accessible data, well-established knowledge in the field, or widely recognized information. Elaborate on why you believe it to be a verifiable fact and provide detailed information and references that support it. Discuss the potential utility of this fact, including how it could be used or applied in different scenarios.
-
-          //   Personal facts: Note any statements that are based on personal experience or knowledge and are true for the individual, but can't be independently verified by others. Discuss the potential utility of this personal fact, including how it may influence understanding or perspective.
-
-          //   Grounded Speculations: Label a statement as grounded speculation if it makes a prediction or guess about the future based on current trends or data. Discuss the current trends, data, or historical events that support this speculation. Evaluate the potential utility or impact if this speculation was acted upon.
-
-          //   Grounded Opinions: Recognize statements of personal preference or judgement as grounded opinions if they are based in well-reasoned thinking or empirical evidence. Discuss the empirical evidence or logical reasoning that supports these grounded opinions, and discuss the potential utility or impact of these grounded opinions if adopted.
-
-          //   Baseless Speculation: Identify statements that speculate or predict without a clear or logical basis in data or facts. As this could potentially be misleading or damaging, no utility analysis will be provided for these points.
-
-          //   Baseless Opinions: Recognize statements of personal judgement or bias that are not backed by evidence or sound reasoning. Like with baseless speculation, no utility analysis will be provided due to the potential for misinformation or harm.
-
-          //   Questions: These are inquiries or requests for information, often seeking clarification or further details on a particular topic. Discuss the utility of these questions in providing greater clarity or understanding.
-
-          //   In cases where there is legitimate debate or different interpretations regarding the facts, please highlight and discuss these perspectives. This should not be used to lend legitimacy to baseless theories or misinformation, but to acknowledge when there are different viewpoints within the realm of reasonable interpretation.
-
-          //   Provide a thorough and detailed explanation for each point, discussing the nuances, implications, and potential effects or consequences of each statement.
-
-          //   After categorizing and explaining each point, provide an in-depth overall assessment of the content. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made.
-
-          //   Following this overall assessment, provide a general conclusion, labeled general conclusion. Instead of categorizing the conversation as a whole, critically evaluate whether the strategies, advice, or opinions expressed align with the best practices as recognized by leading experts, authoritative bodies in the field, or reputable scientific research.
-
-          //   Assess not just whether these strategies, advice, or opinions are widely accepted or popular, but also whether they align with the prevailing consensus among experts in the field.
-
-          //   Additionally, ensure to differentiate between views held by the majority and those held by a minority that may seem to be growing in influence. It's important not to incorrectly attribute a minority viewpoint as a majority consensus if a significantly larger consensus exists on a particular topic.
-
-          //   Comment on how the speakers' views align or contrast with these recognized best practices and consensus. Especially note any instances of both grounded and baseless speculation and discuss how they may influence perceptions and understandings of the topic.
-
-          //   In particular, assess the extent to which the speaker's sentiment is shared among the majority, and whether this majority consensus itself aligns with best practices or expert opinion. Be critical in distinguishing between common critiques or views and those which are supported by empirical evidence and expert consensus. Avoid drawing conclusions solely based on the prevalence of a particular view without examining its grounding in established and credible sources of knowledge in the field.
-
-          //   Democratic Values and Consensus: Assess the extent to which the speaker's views and arguments align with democratic values, principles, and the current democratic consensus on the topic. Note any instances where the speaker's views diverge from these democratic standards and discuss how this might influence the conversation and the audience's understanding of the topic. Compare the speaker's views with the prevailing democratic consensus, noting any areas of agreement or disagreement.
-
-          //   Then, provide a list of further resources or facts about the topic that can give more context and understanding of the broader issue to the user, in bullet point format. These resources should be from credible sources, and if possible, include direct links for further reference.
-
-          //   Each major statement should be analyzed separately, maintaining a structured and thorough approach throughout the analysis.
-
-          //   Please note that the transcript is an array of speeches from speakers using this format:
-
-          //   export interface AmendedSpeech {
-          //     speaker: string;
-          //     text: string;
-          //   }
-
-          //   You will be given an array after the transcription which will have the type of AmendedSpeech or more.
-
-          //   Video title: ${title}
-          //   Transcript: ${JSON.stringify(transcription, null, 2)}`,
-          // },
-        ],
       });
     } catch (error) {
       console.log(error);
@@ -375,9 +276,6 @@ export class JobsService {
     const searchResults = await this.utilsService.searchTerm(searchTerm.query);
     const searchResultFilter = this.utilsService.extractURLs(searchResults);
 
-    // const embeddings = new OpenAIEmbeddings();
-    // const vectorStore = new MemoryVectorStore(embeddings);
-
     const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
       client,
       indexName: 'Factsbolt',
@@ -388,68 +286,6 @@ export class JobsService {
       searchResultFilter,
       vectorStore,
     );
-
-    // for (const result of cbdResultFilter) {
-    //   if (result.includes('youtube')) continue;
-    //   const loader = new PuppeteerWebBaseLoader(result, {
-    //     launchOptions: {
-    //       headless: 'new',
-    //     },
-    //   });
-
-    //   // const loader = new CheerioWebBaseLoader(result);
-
-    //   let docs;
-
-    //   try {
-    //     docs = await loader.load();
-    //   } catch (error) {
-    //     // console.log(`${result} failed`);
-    //     continue;
-    //   }
-
-    //   const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
-    //     chunkSize: 1500, // Roughly double the current estimated chunk size
-    //     chunkOverlap: 10, // This is arbitrary; adjust based on your needs
-    //     separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
-    //   });
-
-    //   const transformer = new MozillaReadabilityTransformer();
-
-    //   const sequence = splitter.pipe(transformer);
-
-    //   let newDocuments: Document[];
-
-    //   try {
-    //     newDocuments = await sequence.invoke(docs);
-    //   } catch (error) {
-    //     console.log('invoke broke');
-    //     continue;
-    //   }
-
-    //   const filteredDocuments: Document[] = newDocuments.filter(
-    //     (doc: Document) => {
-    //       return doc.pageContent ? true : false;
-    //     },
-    //   );
-    //   try {
-    //     await vectorStore.delete({
-    //       filter: {
-    //         where: {
-    //           operator: 'Equal',
-    //           path: ['source'],
-    //           valueText: result,
-    //         },
-    //       },
-    //     });
-    //     await vectorStore.addDocuments(filteredDocuments);
-    //   } catch (error) {
-    //     console.log(error);
-    //     console.log(`${result} failed`);
-    //   }
-
-    //   console.log('done');
-    // }
 
     const vectorStoreRetriever = new HydeRetriever({
       vectorStore,
@@ -687,6 +523,7 @@ export class JobsService {
       chatgpt: {
         ...completeFactsJob,
       },
+      status: JobStatus.COMPLETED,
     };
 
     console.log(fullJob);

@@ -16,6 +16,8 @@ const { TiktokDL } = require('@tobyg74/tiktok-api-dl');
 const download = require('download');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
+const instagramGetUrl = require("instagram-url-direct")
+
 
 @Injectable()
 export class UtilsService {
@@ -48,11 +50,13 @@ export class UtilsService {
   async webBrowserDocumentProcess(
     siteLinks: string[],
     vectorStore: WeaviateStore,
+    fullSite?: boolean,
   ): Promise<void> {
     this.logger.debug(`siteLink parameter: ${siteLinks}`)
     for (const url of siteLinks) {
       this.logger.log(`Documenting ${url}`);
       if (!url || url.includes('youtube')) continue;
+
       const loader = new PuppeteerWebBaseLoader(url, {
         launchOptions: {
           headless: 'new',
@@ -118,6 +122,14 @@ export class UtilsService {
       console.log('done');
     }
     this.logger.debug('Complete');
+  }
+
+  async downloadInstagram(createJobDto: CreateJobDto): Promise<string> {
+    const downloadInstagram = await instagramGetUrl(
+      'https://www.instagram.com/p/CxJOUBRoey9/',
+    );
+    console.log(downloadInstagram);
+    return downloadInstagram;
   }
 
   async downloadTikTokJob(

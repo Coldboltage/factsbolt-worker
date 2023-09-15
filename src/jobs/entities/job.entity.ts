@@ -1,6 +1,6 @@
-import { AmendedSpeech } from "factsbolt-types";
+import { AmendedSpeech, JobStatus } from 'factsbolt-types';
 
-export class Job { }
+export class Job {}
 
 export interface AudioInformation {
   url: string;
@@ -29,11 +29,11 @@ export interface TranscriptionJob {
   text: string;
   utterance: AmendedSpeech[];
 }
-
 export interface FullJob {
   video: VideoJob;
   transcription: TranscriptionJob;
   chatgpt: ChatGPT;
+  status: JobStatus;
 }
 
 export interface CompletedVideoJob {
