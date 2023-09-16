@@ -7,6 +7,8 @@ import { UtilsService } from '../../utils/utils.service';
 import weaviate from 'weaviate-ts-client';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
 import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
+import "@tensorflow/tfjs-backend-cpu";
+import { TensorFlowEmbeddings } from "langchain/embeddings/tensorflow";
 
 @Injectable()
 export class RabbitmqService implements OnModuleInit {
@@ -51,7 +53,7 @@ export class RabbitmqService implements OnModuleInit {
   }
 
   async addWebPages(webPages: string[]): Promise<void> {
-    const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
+    const vectorStore = new WeaviateStore(new TensorFlowEmbeddings(), {
       client: this.client,
       indexName: 'Factsbolt',
       metadataKeys: ['source'],

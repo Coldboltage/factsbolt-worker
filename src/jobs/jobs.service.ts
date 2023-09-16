@@ -46,6 +46,9 @@ import weaviate from 'weaviate-ts-client';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
 import { Document } from 'langchain/document';
 
+import "@tensorflow/tfjs-backend-cpu";
+import { TensorFlowEmbeddings } from "langchain/embeddings/tensorflow";
+
 @Injectable()
 export class JobsService {
   constructor(
@@ -275,7 +278,13 @@ export class JobsService {
     const searchResults = await this.utilsService.searchTerm(searchTerm.query);
     const searchResultFilter = this.utilsService.extractURLs(searchResults);
 
-    const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
+    // const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
+    //   client,
+    //   indexName: 'Factsbolt',
+    //   metadataKeys: ['source'],
+    // });
+
+    const vectorStore = new WeaviateStore(new TensorFlowEmbeddings(), {
       client,
       indexName: 'Factsbolt',
       metadataKeys: ['source'],

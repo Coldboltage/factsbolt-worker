@@ -52,7 +52,7 @@ export class UtilsService {
     vectorStore: WeaviateStore,
     fullSite?: boolean,
   ): Promise<void> {
-    this.logger.debug(`siteLink parameter: ${siteLinks}`)
+    this.logger.debug(`siteLink parameter: ${siteLinks}`);
     for (const url of siteLinks) {
       this.logger.log(`Documenting ${url}`);
       if (!url || url.includes('youtube')) continue;
@@ -104,17 +104,19 @@ export class UtilsService {
       );
 
       try {
-        await vectorStore.delete({
-          filter: {
-            where: {
-              operator: 'Equal',
-              path: ['source'],
-              valueText: url,
-            },
-          },
-        });
+        console.log("Checking Vector Store")
+        // await vectorStore.delete({
+        //   filter: {
+        //     where: {
+        //       operator: 'Equal',
+        //       path: ['source'],
+        //       valueText: url,
+        //     },
+        //   },
+        // });
         await vectorStore.addDocuments(filteredDocuments);
       } catch (error) {
+        console.log("Vector Store Failed")
         console.log(error);
         console.log(`${url} failed`);
       }
