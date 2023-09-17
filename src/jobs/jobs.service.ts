@@ -30,8 +30,6 @@ import { HtmlToTextTransformer } from 'langchain/document_transformers/html_to_t
 import { MozillaReadabilityTransformer } from 'langchain/document_transformers/mozilla_readability';
 import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
 import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
-
-import { OpenAIEmbeddings } from 'langchain/embeddings/openai';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
 import {
   RetrievalQAChain,
@@ -276,7 +274,10 @@ export class JobsService {
     const searchResults = await this.utilsService.searchTerm(searchTerm.query);
     const searchResultFilter = this.utilsService.extractURLs(searchResults);
 
-    const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
+    console.log("uh oh Alan")
+    await new Promise((r) => setTimeout(r, 200000000))
+
+    const vectorStore = new WeaviateStore(new TensorFlowEmbeddings(), {
       client,
       indexName: 'Factsbolt',
       metadataKeys: ['source'],
