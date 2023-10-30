@@ -19,7 +19,12 @@ const { dlAudio } = require('youtube-exec');
 const youtubedl = require('youtube-dl-exec');
 const { Configuration, OpenAIApi } = require('openai');
 const stripchar = require('stripchar').StripChar;
-import { AmendedSpeech, AmendedUtterance, JobStatus, Utterance } from 'factsbolt-types';
+import {
+  AmendedSpeech,
+  AmendedUtterance,
+  JobStatus,
+  Utterance,
+} from 'factsbolt-types';
 import { OpenAI, PromptTemplate } from 'langchain';
 import { CheerioWebBaseLoader } from 'langchain/document_loaders/web/cheerio';
 
@@ -274,9 +279,6 @@ export class JobsService {
     const searchResults = await this.utilsService.searchTerm(searchTerm.query);
     const searchResultFilter = this.utilsService.extractURLs(searchResults);
 
-    console.log("uh oh Alan")
-    await new Promise((r) => setTimeout(r, 200000000))
-
     const vectorStore = new WeaviateStore(new TensorFlowEmbeddings(), {
       client,
       indexName: 'Factsbolt',
@@ -291,7 +293,7 @@ export class JobsService {
     const vectorStoreRetriever = new HydeRetriever({
       vectorStore,
       llm,
-      k: 6,
+      k: 4,
       verbose: true,
     });
 
@@ -317,14 +319,39 @@ export class JobsService {
         Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
       );
 
-    const fullResults = [...results, ...factSources];
+    const vectorStoreRetrieverReutersFacts = new HydeRetriever({
+      vectorStore,
+      llm,
+      k: 2,
+      verbose: true,
+    });
+
+    const reutersFacts =
+      await vectorStoreRetrieverReutersFacts.getRelevantDocuments(
+        `Given the following title and transcript, first identify key phrases or entities that are the focus of factual claims, speculations, or opinions. Then, classify the content into broad categories such as 'economy', 'politics', etc. Finally, retrieve the most relevant documents that could help in fact-checking the identified facts, speculations, and opinions and are sourced by Reuters which can be found in the source URL:
+          Title: ${title},
+          Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
+      );
+
+    const fullResults = [
+      // ...results,
+      ...factSources,
+      ...reutersFacts,
+    ];
 
     const result = await chain.call({
       input_documents: fullResults,
       question: `
-      The Question, please evaluate the following transcript with the help of the documents provided before as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points following the interface FactCheckSentence shape.
+      Perform a fact-check analysis on the following transcript using the provided documents as context. Follow the instructions below."
 
-      Please evaluate the following transcript with the help of the documents provided before, as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points or closely related sentences for a nuanced understanding. For each point, identify it as either a Verified Fact, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
+      title of video: ${title},
+      Transcript of video: ${JSON.stringify(
+        transcriptionJob.utterance,
+        null,
+        2,
+      )}.
+
+      Please evaluate the following transcript with the help of the documents provided, as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points or closely related sentences for a nuanced understanding. For each point, identify it as either a Verified Fact, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
 
       Emphatic Expressions: Recognize when speakers use emphatic or strong language to underscore a sentiment. Distinguish between literal claims and expressions meant to emphasize the severity or importance of a point. Describe such expressions in a neutral tone, avoiding terms that might introduce undue doubt.
 
@@ -434,13 +461,6 @@ export class JobsService {
         contextualConclusion: string;
         furtherResources: string[] // with link
       }
-
-      title of video: ${title},
-      Transcript of video: ${JSON.stringify(
-        transcriptionJob.utterance,
-        null,
-        2,
-      )}.
 
       If by any chance you can't assist, state exactly why, and show the transcript
       `,

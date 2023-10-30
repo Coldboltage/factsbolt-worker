@@ -42,6 +42,7 @@ export class RabbitmqController {
   // @MessagePattern('newJob')
   @EventPattern('newJob')
   async newFullJob(@Payload() data: string, @Ctx() context: RmqContext) {
+    console.log('Was I fired');
     const channel = context.getChannelRef();
     const originalMsg = context.getMessage();
     // handle the message here

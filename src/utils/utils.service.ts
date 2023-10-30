@@ -8,6 +8,7 @@ import { WeaviateStore } from 'langchain/vectorstores/weaviate';
 import { CreateJobDto } from '../jobs/dto/create-job.dto';
 import { VideoJob, AudioInformation } from '../jobs/entities/job.entity';
 import { CompletedVideoJob } from 'factsbolt-types';
+import { CheerioWebBaseLoader } from 'langchain/document_loaders/web/cheerio';
 const path = require('path');
 const youtubedl = require('youtube-dl-exec');
 const stripchar = require('stripchar').StripChar;
@@ -16,8 +17,7 @@ const { TiktokDL } = require('@tobyg74/tiktok-api-dl');
 const download = require('download');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
-const instagramGetUrl = require("instagram-url-direct")
-
+const instagramGetUrl = require('instagram-url-direct');
 
 @Injectable()
 export class UtilsService {
@@ -52,16 +52,18 @@ export class UtilsService {
     vectorStore: WeaviateStore,
     fullSite?: boolean,
   ): Promise<void> {
-    this.logger.debug(`siteLink parameter: ${siteLinks}`)
+    this.logger.debug(`siteLink parameter: ${siteLinks}`);
     for (const url of siteLinks) {
       this.logger.log(`Documenting ${url}`);
       if (!url || url.includes('youtube')) continue;
 
-      const loader = new PuppeteerWebBaseLoader(url, {
-        launchOptions: {
-          headless: 'new',
-        },
-      });
+      // const loader = new PuppeteerWebBaseLoader(url, {
+      //   launchOptions: {
+      //     headless: 'new',
+      //   },
+      // });
+
+      const loader = new CheerioWebBaseLoader(url);
 
       // const loader = new CheerioWebBaseLoader(result);
 

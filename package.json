@@ -32,6 +32,7 @@
     "@tensorflow/tfjs-converter": "3.6.0",
     "@tensorflow/tfjs-core": "3.6.0",
     "@tensorflow/tfjs-node": "3.6.0",
+    "@tensorflow/tfjs-node-gpu": "^3.6.0",
     "@tobyg74/tiktok-api-dl": "^1.0.4",
     "amqp-connection-manager": "^4.1.13",
     "amqplib": "^0.10.3",
