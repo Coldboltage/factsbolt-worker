@@ -260,8 +260,8 @@ export class JobsService {
   async factCheckLang(title: string, transcriptionJob: TranscriptionJob) {
     const model = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-4',
-      // modelName: 'gpt-3.5-turbo-16k',
+      modelName: 'gpt-4-1106-preview',
+      // modelName: 'gpt-4-0314',
     });
 
     // Something wrong with the weaviate-ts-client types, so we need to disable
@@ -274,10 +274,21 @@ export class JobsService {
 
     // const baseCompressor = LLMChainExtractor.fromLLM(model);
 
+    // First Phase
     const searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
-
     const searchResults = await this.utilsService.searchTerm(searchTerm.query);
     const searchResultFilter = this.utilsService.extractURLs(searchResults);
+
+    // Reuters Phase
+    // const searchTermReuters = await this.reutersSearchGen(
+    //   transcriptionJob,
+    //   title,
+    // );
+    // const searchResultsReuters = await this.utilsService.searchTerm(
+    //   searchTermReuters.query,
+    // );
+    // const searchResultFilterReuters =
+    //   this.utilsService.extractURLs(searchResultsReuters);
 
     const vectorStore = new WeaviateStore(new TensorFlowEmbeddings(), {
       client,
@@ -286,14 +297,17 @@ export class JobsService {
     });
 
     await this.utilsService.webBrowserDocumentProcess(
-      searchResultFilter,
+      [
+        ...searchResultFilter,
+        // ...searchResultFilterReuters
+      ],
       vectorStore,
     );
 
     const vectorStoreRetriever = new HydeRetriever({
       vectorStore,
       llm,
-      k: 4,
+      k: 16,
       verbose: true,
     });
 
@@ -305,53 +319,44 @@ export class JobsService {
 
     const chain = loadQAStuffChain(model, {});
 
-    const vectorStoreRetrieverFactFinder = new HydeRetriever({
-      vectorStore,
-      llm,
-      k: 4,
-      verbose: true,
-    });
+    // const vectorStoreRetrieverFactFinder = new HydeRetriever({
+    //   vectorStore,
+    //   llm,
+    //   k: 4,
+    //   verbose: true,
+    // });
 
-    const factSources =
-      await vectorStoreRetrieverFactFinder.getRelevantDocuments(
-        `Given the following title and transcript, first identify key phrases or entities that are the focus of factual claims, speculations, or opinions. Then, classify the content into broad categories such as 'economy', 'politics', etc. Finally, retrieve the most relevant documents that could help in fact-checking the identified facts, speculations, and opinions:
-        Title: ${title},
-        Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
-      );
+    // const factSources =
+    //   await vectorStoreRetrieverFactFinder.getRelevantDocuments(
+    //     `Given the following title and transcript, first identify key phrases or entities that are the focus of factual claims, speculations, or opinions. Then, classify the content into broad categories such as 'economy', 'politics', etc. Finally, retrieve the most relevant documents that could help in fact-checking the identified facts, speculations, and opinions:
+    //     Title: ${title},
+    //     Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
+    //   );
 
-    const vectorStoreRetrieverReutersFacts = new HydeRetriever({
-      vectorStore,
-      llm,
-      k: 2,
-      verbose: true,
-    });
+    // const vectorStoreRetrieverReutersFacts = new HydeRetriever({
+    //   vectorStore,
+    //   llm,
+    //   k: 4,
+    //   verbose: true,
+    // });
 
-    const reutersFacts =
-      await vectorStoreRetrieverReutersFacts.getRelevantDocuments(
-        `Given the following title and transcript, first identify key phrases or entities that are the focus of factual claims, speculations, or opinions. Then, classify the content into broad categories such as 'economy', 'politics', etc. Finally, retrieve the most relevant documents that could help in fact-checking the identified facts, speculations, and opinions and are sourced by Reuters which can be found in the source URL:
-          Title: ${title},
-          Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
-      );
+    // const reutersFacts =
+    //   await vectorStoreRetrieverReutersFacts.getRelevantDocuments(
+    //     `Given the following title and transcript, first identify key phrases or entities that are the focus of factual claims, speculations, or opinions. Then, classify the content into broad categories such as 'economy', 'politics', etc. Finally, retrieve the most relevant documents that could help in fact-checking the identified facts, speculations, and opinions and are sourced by Reuters which can be found in the source URL:
+    //       Title: ${title},
+    //       Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
+    //   );
 
     const fullResults = [
-      // ...results,
-      ...factSources,
-      ...reutersFacts,
+      ...results,
+      // ...factSources,
+      // ...reutersFacts
     ];
 
     const result = await chain.call({
       input_documents: fullResults,
-      question: `
-      Perform a fact-check analysis on the following transcript using the provided documents as context. Follow the instructions below."
-
-      title of video: ${title},
-      Transcript of video: ${JSON.stringify(
-        transcriptionJob.utterance,
-        null,
-        2,
-      )}.
-
-      Please evaluate the following transcript with the help of the documents provided, as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points or closely related sentences for a nuanced understanding. For each point, identify it as either a Verified Fact, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
+      verbose: true,
+      question: `Please evaluate the following transcript with the help of the documents provided, as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points or closely related sentences for a nuanced understanding. For each point, identify it as either a Verified Fact, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
 
       Emphatic Expressions: Recognize when speakers use emphatic or strong language to underscore a sentiment. Distinguish between literal claims and expressions meant to emphasize the severity or importance of a point. Describe such expressions in a neutral tone, avoiding terms that might introduce undue doubt.
 
@@ -401,17 +406,17 @@ export class JobsService {
 
       In particular, assess the extent to which the speaker's sentiment is shared among the majority, and whether this majority consensus itself aligns with best practices or expert opinion. Be critical in distinguishing between common critiques or views and those which are supported by empirical evidence and expert consensus. Avoid drawing conclusions solely based on the prevalence of a particular view without examining its grounding in established and credible sources of knowledge in the field.
 
-      Labedlled, Consideration of Multiple Perspectives: Evaluate the primary perspective of the speaker. If they focus on a specific viewpoint or aspect, recognize that without introducing undue doubt. However, note if there are widely recognized alternative perspectives or nuances that the speaker might not have covered.
+      Labelled, Consideration of Multiple Perspectives: Evaluate the primary perspective of the speaker. If they focus on a specific viewpoint or aspect, recognize that without introducing undue doubt. However, note if there are widely recognized alternative perspectives or nuances that the speaker might not have covered.
 
-      Labedlled, Fact Check Conclusion: Assess the general conclusion and overall reliability of a speaker's statements, then distill this information into a succinct "Fact Check Conclusion." Consider both the evidence presented and any logical or common-sense assumptions that may support the advice or information. The conclusion should guide the reader in layman terms on the practicality, potential reliability, and applicability of the content, even when full evidence isn't available.
+      Labelled, Fact Check Conclusion: Assess the general conclusion and overall reliability of a speaker's statements, then distill this information into a succinct "Fact Check Conclusion." Consider both the evidence presented and any logical or common-sense assumptions that may support the advice or information. The conclusion should guide the reader in layman terms on the practicality, potential reliability, and applicability of the content, even when full evidence isn't available.
 
-      Labedlled, Democratic Values and Consensus: Assess the extent to which the speaker's views and arguments align with democratic values, principles, and the current democratic consensus on the topic. Note any instances where the speaker's views diverge from these democratic standards and discuss how this might influence the conversation and the audience's understanding of the topic. Compare the speaker's views with the prevailing democratic consensus, noting any areas of agreement or disagreement.
+      Labelled, Democratic Values and Consensus: Assess the extent to which the speaker's views and arguments align with democratic values, principles, and the current democratic consensus on the topic. Note any instances where the speaker's views diverge from these democratic standards and discuss how this might influence the conversation and the audience's understanding of the topic. Compare the speaker's views with the prevailing democratic consensus, noting any areas of agreement or disagreement.
 
-      Labedlled, Contextual Conclusion: Summarize the overall context in which facts, opinions, and speculations are presented in the transcript. Explicitly flag and highlight any recurring themes of contextual manipulation, misleading presentation, or instances where grounded opinions and speculations are used manipulatively. Assess the broader implications of these contextual issues on the validity of the speaker's arguments, the potential impact on public perception, and any attempts to steer the narrative away from the truth. This conclusion should guide the reader in understanding the practicality, reliability, and applicability of the content, especially in the context of any manipulative tactics identified.
+      Labelled, Contextual Conclusion: Summarize the overall context in which facts, opinions, and speculations are presented in the transcript. Explicitly flag and highlight any recurring themes of contextual manipulation, misleading presentation, or instances where grounded opinions and speculations are used manipulatively. Assess the broader implications of these contextual issues on the validity of the speaker's arguments, the potential impact on public perception, and any attempts to steer the narrative away from the truth. This conclusion should guide the reader in understanding the practicality, reliability, and applicability of the content, especially in the context of any manipulative tactics identified.
 
       Note: In all sections labeled as 'Assessment,' 'Conclusion,' or any variations thereof—both present and those that may be added in the future—please provide a highly detailed and verbose response. These designated sections are intended to yield a comprehensive and nuanced understanding of the topic. Conciseness is acceptable for other sections not falling under these categories.
 
-      Labedlled, Resources, then, provide a list of resources or facts that offer greater context and insight into the broader issue. Ensure these resources come from credible and respected origins, are recognized for their sound advice and dependability across the relevant community, have stood the test of scrutiny and critical examination, are penned by authors without significant controversies in their background, and where feasible, include direct links for further exploration. Recommendations should lean towards sources with broad consensus, steering clear of those with mixed or contentious opinions.
+      Labelled, Resources, then, provide a list of resources or facts that offer greater context and insight into the broader issue. Ensure these resources come from credible and respected origins, are recognized for their sound advice and dependability across the relevant community, have stood the test of scrutiny and critical examination, are penned by authors without significant controversies in their background, and where feasible, include direct links for further exploration. Recommendations should lean towards sources with broad consensus, steering clear of those with mixed or contentious opinions.
 
       Each major statement should be analyzed separately, maintaining a structured and thorough approach throughout the analysis.
 
@@ -461,6 +466,13 @@ export class JobsService {
         contextualConclusion: string;
         furtherResources: string[] // with link
       }
+
+      title of video: ${title},
+      Transcript of video to text: ${JSON.stringify(
+        transcriptionJob.utterance,
+        null,
+        2,
+      )}.
 
       If by any chance you can't assist, state exactly why, and show the transcript
       `,
@@ -617,6 +629,38 @@ export class JobsService {
 
     const prompt = new PromptTemplate({
       template: `Using the title as a primary context, analyze the provided transcription in detail. The title often offers key insights into the overarching theme. Identify specific entities, events, or nuances from both the title and transcription, and then generate a detailed and contextually accurate search term for research on Google. Ensure that your query is aligned with the essence of both the title and the transcription. {format_instructions} {title} {transcription}`,
+      inputVariables: ['transcription', 'title'],
+      partialVariables: { format_instructions: formatInstructions },
+    });
+
+    const input = await prompt.format({
+      transcription: transcriptionJob.text,
+      title,
+    });
+
+    const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    // const model = new OpenAI({ temperature: 0 });
+
+    const response = await model.call(input);
+
+    const parsed = await parser.parse(response);
+
+    console.log(parsed);
+    return parsed;
+  }
+
+  async reutersSearchGen(
+    transcriptionJob: TranscriptionJob,
+    title: string,
+  ): Promise<{ [x: string]: string }> {
+    const parser = StructuredOutputParser.fromNamesAndDescriptions({
+      query: 'A detailed Google search query',
+    });
+
+    const formatInstructions = parser.getFormatInstructions();
+
+    const prompt = new PromptTemplate({
+      template: `Analyze the provided transcription, focusing on the central subject or theme. Use the title for additional context to understand the overarching focus. Identify the key subject or event from the transcription and title. Then, create a Google search query that targets this specific subject on Reuters.com. The query should be concise yet comprehensive, capturing the essence of the primary subject in the transcription. {format_instructions} {title} {transcription} Generate a focused Google search query on Reuters.com based on the primary subject identified.`,
       inputVariables: ['transcription', 'title'],
       partialVariables: { format_instructions: formatInstructions },
     });

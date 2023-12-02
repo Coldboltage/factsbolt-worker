@@ -23,17 +23,42 @@ const instagramGetUrl = require('instagram-url-direct');
 export class UtilsService {
   private readonly logger = new Logger(UtilsService.name);
 
+  // async searchTerm(query: string): Promise<SearchResult[]> {
+  //   console.log(query);
+  //   const response = await fetch(
+  //     `http://api.serpstack.com/search?access_key=${process.env.SERPSTACK_KEY}&query=${query}`,
+  //   );
+  //   console.log(
+  //     `http://api.serpstack.com/search?access_key=${process.env.SERPSTACK_KEY}&query=${query}`,
+  //   );
+  //   const data = await response.json();
+  //   console.log(data.organic_results);
+  //   return data.organic_results;
+  // }
+
   async searchTerm(query: string): Promise<SearchResult[]> {
     console.log(query);
     const response = await fetch(
-      `http://api.serpstack.com/search?access_key=${process.env.SERPSTACK_KEY}&query=${query}`,
+      `https://api.scraperapi.com/structured/google/search?api_key=${process.env.SCRAPPER_API}&query=${query}`,
     );
     console.log(
-      `http://api.serpstack.com/search?access_key=${process.env.SERPSTACK_KEY}&query=${query}`,
+      `https://api.scraperapi.com/structured/google/search?api_key=${process.env.SCRAPPER_API}&query=${query}`,
     );
     const data = await response.json();
     console.log(data.organic_results);
-    return data.organic_results;
+
+    const siteLinks: SearchResult[] = [];
+    for (const siteResult of data.organic_results) {
+      const siteInfo = {
+        ...siteResult,
+        url: siteResult.link,
+      };
+      delete siteInfo.link;
+      siteLinks.push(siteInfo);
+    }
+
+    console.log(data.organic_results);
+    return siteLinks;
   }
 
   extractURLs(listOfResults: SearchResult[]): string[] {
@@ -77,7 +102,7 @@ export class UtilsService {
       }
 
       const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
-        chunkSize: 1500, // Roughly double the current estimated chunk size
+        chunkSize: 600, // Roughly double the current estimated chunk size
         chunkOverlap: 10, // This is arbitrary; adjust based on your needs
         separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
       });
