@@ -260,8 +260,9 @@ export class JobsService {
   async factCheckLang(title: string, transcriptionJob: TranscriptionJob) {
     const model = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-4-1106-preview',
+      // modelName: 'gpt-4-1106-preview',
       // modelName: 'gpt-4-0314',
+      modelName: 'gpt-4',
     });
 
     // Something wrong with the weaviate-ts-client types, so we need to disable
@@ -307,14 +308,20 @@ export class JobsService {
     const vectorStoreRetriever = new HydeRetriever({
       vectorStore,
       llm,
-      k: 16,
+      k: 14,
       verbose: true,
     });
 
+    // const results = await vectorStoreRetriever.getRelevantDocuments(
+    //   `Using the title for context and details from the transcription, extract key entities and nuances. Then, combine these insights to form a contextually accurate search query, ensuring alignment with both the title and transcription's essence:
+    //   Title: ${title},
+    //   Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
+    // );
+
     const results = await vectorStoreRetriever.getRelevantDocuments(
-      `Using the title for context and details from the transcription, extract key entities and nuances. Then, combine these insights to form a contextually accurate search query, ensuring alignment with both the title and transcription's essence: 
+      `Conduct a thorough analysis of the given title and transcript to extract comprehensive key entities, themes, and detailed nuances. Create a search query that is rich in detail and accurately reflects the specific content and context provided by both the title and the transcript. The query should encapsulate the essence and the intricate aspects of the discussion, aiming to retrieve documents that offer a deep and direct insight into the subject matter at hand:
       Title: ${title},
-      Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
+      Transcript: ${JSON.stringify(transcriptionJob.utterance)}`,
     );
 
     const chain = loadQAStuffChain(model, {});
