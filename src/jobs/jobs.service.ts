@@ -244,8 +244,8 @@ export class JobsService {
   }: Job) {
     const model = new OpenAI({
       temperature: 0,
-      // modelName: 'gpt-4-1106-preview',
-      modelName: 'gpt-4-0314',
+      modelName: 'gpt-4-1106-preview',
+      // modelName: 'gpt-4-0314',
       // modelName: 'gpt-4',
     });
 
@@ -294,7 +294,7 @@ export class JobsService {
     const vectorStoreRetriever = new HydeRetriever({
       vectorStore,
       llm,
-      k: 14,
+      k: 24,
       verbose: true,
     });
 
@@ -350,7 +350,7 @@ export class JobsService {
       input_documents: fullResults,
       verbose: true,
       question: `
-      Please evaluate the following transcript with the help of the documents provided, as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points or closely related sentences for a nuanced understanding. For each point, identify it as either a Verified Fact, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
+      Please evaluate the following transcript with the help of the documents provided, as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points or closely related sentences for a nuanced understanding. For each point, identify it as either a Verified Fact, Provisionally Unverified, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
 
       Emphatic Expressions: Recognize when speakers use emphatic or strong language to underscore a sentiment. Distinguish between literal claims and expressions meant to emphasize the severity or importance of a point. Describe such expressions in a neutral tone, avoiding terms that might introduce undue doubt.
 
@@ -363,6 +363,7 @@ export class JobsService {
       b) If referencing the training data, provide a specific reference akin to: "As found in a study from [Specific Year] in [Specific Source Name],..." or "According to [Authoritative Source]...".
       Assert facts or claims that align with well-established knowledge or are corroborated by credible sources. If the statement in question aligns with your training data and the documented context, elaborate on why you believe it to be a verified fact. Discuss the factual accuracy, source credibility, and the potential implications or applications of the fact. If the fact is part of a larger narrative that has a specific intent (e.g., manipulative, speculative), note that context.
 
+      Provisionally Unverified: Statements or claims categorized as "Provisionally Unverified" are those where the available evidence or sources are insufficient for full verification but also do not warrant outright dismissal. This category recognizes the potential validity of the information while acknowledging that it requires further evidence or corroboration.
 
       Contextually Manipulated Facts: Identify statements that present facts or claims verified through your training data up to September 2021, documented context, or credible public sources, but are potentially misleading or taken out of context. Label these as 'Contextually Manipulated Fact.' Confirm the factual accuracy of the statement and provide a detailed analysis of the context in which it is presented. Discuss what additional information is necessary for a full understanding and if the source or presentation contributes to a misleading or manipulative narrative. Evaluate the potential utility and harm of these manipulated facts, discussing how they could be used or misused in different scenarios. Include any counterpoints or alternative perspectives that could add valuable context to the fact in question, noting if these counterpoints are supported by your training data or other credible sources.
 
@@ -447,6 +448,7 @@ export class JobsService {
         GroundedSpeculation = "Grounded Speculation",
         ManipulativeSpeculation = "Manipulative Speculation",
         BaselessSpeculation = "Baseless Speculation",
+        ProvisionallyUnverified = "Provisionally Unverified"
       }
 
 
@@ -624,7 +626,7 @@ export class JobsService {
     const formatInstructions = parser.getFormatInstructions();
 
     const prompt = new PromptTemplate({
-      template: `Using the title as a primary context, analyze the provided transcription in detail. The title often offers key insights into the overarching theme. Identify specific entities, events, or nuances from both the title and transcription, and then generate a detailed and contextually accurate search term for research on Google. Ensure that your query is aligned with the essence of both the title and the transcription. {format_instructions} {title} {transcription}`,
+      template: `Analyze the provided transcription and title to identify and isolate central factual claims and overarching themes. Use the title for initial context but emphasize the transcription's content for constructing search queries. Develop queries aimed at fact-checking these claims and investigating the broader themes, ensuring a focus on up-to-date, credible, and scientific sources. The queries should facilitate an exploration of the wider scientific, psychological, and societal implications of the discussed topics. Include a variety of sources, like scientific studies, historical context, statistical data, and expert opinions across relevant fields, to gain a comprehensive understanding. Craft queries that are concise, limited to 32 words, and free of special characters such as ?, ., or any non-alphanumeric symbols {format_instructions} {title} {transcription}`,
       inputVariables: ['transcription', 'title'],
       partialVariables: { format_instructions: formatInstructions },
     });
