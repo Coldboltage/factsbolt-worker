@@ -3,13 +3,12 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import {
-  AudioInformation,
   ChatGPT,
   CompletedVideoJob,
   FullJob,
+  Job,
   Speech,
   TranscriptionJob,
-  VideoJob,
 } from './entities/job.entity';
 import axios from 'axios';
 import * as fs from 'fs-extra';
@@ -19,28 +18,10 @@ const { dlAudio } = require('youtube-exec');
 const youtubedl = require('youtube-dl-exec');
 const { Configuration, OpenAIApi } = require('openai');
 const stripchar = require('stripchar').StripChar;
-import {
-  AmendedSpeech,
-  AmendedUtterance,
-  JobStatus,
-  Utterance,
-} from 'factsbolt-types';
+import { AmendedSpeech, JobStatus } from 'factsbolt-types';
 import { OpenAI, PromptTemplate } from 'langchain';
-import { CheerioWebBaseLoader } from 'langchain/document_loaders/web/cheerio';
 
-import { PuppeteerWebBaseLoader } from 'langchain/document_loaders/web/puppeteer';
-
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
-import { HtmlToTextTransformer } from 'langchain/document_transformers/html_to_text';
-import { MozillaReadabilityTransformer } from 'langchain/document_transformers/mozilla_readability';
-import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
-import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
-import { MemoryVectorStore } from 'langchain/vectorstores/memory';
-import {
-  RetrievalQAChain,
-  loadQAChain,
-  loadQAStuffChain,
-} from 'langchain/chains';
+import { loadQAStuffChain } from 'langchain/chains';
 import { StructuredOutputParser } from 'langchain/output_parsers';
 import { UtilsService } from '../utils/utils.service';
 import { HydeRetriever } from 'langchain/retrievers/hyde';
@@ -48,7 +29,6 @@ import { faker } from '@faker-js/faker';
 
 import weaviate from 'weaviate-ts-client';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
-import { Document } from 'langchain/document';
 
 @Injectable()
 export class JobsService {
@@ -257,12 +237,16 @@ export class JobsService {
     };
   }
 
-  async factCheckLang(title: string, transcriptionJob: TranscriptionJob) {
+  async factCheckLang({
+    title = 'No Title Given',
+    transcriptionJob,
+    text,
+  }: Job) {
     const model = new OpenAI({
       temperature: 0,
       // modelName: 'gpt-4-1106-preview',
-      // modelName: 'gpt-4-0314',
-      modelName: 'gpt-4',
+      modelName: 'gpt-4-0314',
+      // modelName: 'gpt-4',
     });
 
     // Something wrong with the weaviate-ts-client types, so we need to disable
@@ -276,7 +260,9 @@ export class JobsService {
     // const baseCompressor = LLMChainExtractor.fromLLM(model);
 
     // First Phase
-    const searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
+    const searchTerm = !text
+      ? await this.transcriptSearchGen(transcriptionJob, title)
+      : await this.generalTextSearchGen(text, title);
     const searchResults = await this.utilsService.searchTerm(searchTerm.query);
     const searchResultFilter = this.utilsService.extractURLs(searchResults);
 
@@ -321,7 +307,7 @@ export class JobsService {
     const results = await vectorStoreRetriever.getRelevantDocuments(
       `Conduct a thorough analysis of the given title and transcript to extract comprehensive key entities, themes, and detailed nuances. Create a search query that is rich in detail and accurately reflects the specific content and context provided by both the title and the transcript. The query should encapsulate the essence and the intricate aspects of the discussion, aiming to retrieve documents that offer a deep and direct insight into the subject matter at hand:
       Title: ${title},
-      Transcript: ${JSON.stringify(transcriptionJob.utterance)}`,
+      Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}`,
     );
 
     const chain = loadQAStuffChain(model, {});
@@ -363,7 +349,8 @@ export class JobsService {
     const result = await chain.call({
       input_documents: fullResults,
       verbose: true,
-      question: `Please evaluate the following transcript with the help of the documents provided, as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points or closely related sentences for a nuanced understanding. For each point, identify it as either a Verified Fact, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
+      question: `
+      Please evaluate the following transcript with the help of the documents provided, as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points or closely related sentences for a nuanced understanding. For each point, identify it as either a Verified Fact, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
 
       Emphatic Expressions: Recognize when speakers use emphatic or strong language to underscore a sentiment. Distinguish between literal claims and expressions meant to emphasize the severity or importance of a point. Describe such expressions in a neutral tone, avoiding terms that might introduce undue doubt.
 
@@ -476,12 +463,14 @@ export class JobsService {
 
       title of video: ${title},
       Transcript of video to text: ${JSON.stringify(
-        transcriptionJob.utterance,
+        !text ? transcriptionJob.utterance : text,
         null,
         2,
       )}.
 
       If by any chance you can't assist, state exactly why, and show the transcript
+
+      Note, I have done many of fact checking analysis jobs with gpt4 with no issues, therefore there should be no reason why you can't do this. All the information you need will be provided in the documents.
       `,
     });
 
@@ -548,10 +537,10 @@ export class JobsService {
     //   transcriptionJob.utterance,
     // );
 
-    const completeFactsJob = await this.factCheckLang(
-      completedVideoJob.video.name,
-      transcriptionJob,
-    );
+    const completeFactsJob = await this.factCheckLang({
+      title: completedVideoJob.video.name,
+      transcriptionJob: transcriptionJob,
+    });
 
     const fullJob: FullJob = {
       video: {
@@ -656,6 +645,38 @@ export class JobsService {
     return parsed;
   }
 
+  async generalTextSearchGen(
+    text: string,
+    title: string,
+  ): Promise<{ [x: string]: string }> {
+    const parser = StructuredOutputParser.fromNamesAndDescriptions({
+      query: 'A detailed Google search query',
+    });
+
+    const formatInstructions = parser.getFormatInstructions();
+
+    const prompt = new PromptTemplate({
+      template: `Using the title as a primary context, analyze the provided transcription in detail. The title often offers key insights into the overarching theme. Identify specific entities, events, or nuances from both the title and transcription, and then generate a detailed and contextually accurate search term for research on Google. Ensure that your query is aligned with the essence of both the title and the transcription. {format_instructions} {title} {transcription}`,
+      inputVariables: ['transcription', 'title'],
+      partialVariables: { format_instructions: formatInstructions },
+    });
+
+    const input = await prompt.format({
+      transcription: text,
+      title,
+    });
+
+    const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    // const model = new OpenAI({ temperature: 0 });
+
+    const response = await model.call(input);
+
+    const parsed = await parser.parse(response);
+
+    console.log(parsed);
+    return parsed;
+  }
+
   async reutersSearchGen(
     transcriptionJob: TranscriptionJob,
     title: string,
@@ -687,6 +708,9 @@ export class JobsService {
     console.log(parsed);
     return parsed;
   }
+
+  // Purely text only. No video conversion
+  async textOnlyChecker() {}
 
   // TESTER
   async langChainTest(

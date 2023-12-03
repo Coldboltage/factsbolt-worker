@@ -9,6 +9,7 @@ import {
 import { RabbitmqService } from './rabbitmq.service';
 import { CreateRabbitmqDto } from './dto/create-rabbitmq.dto';
 import { UpdateRabbitmqDto } from './dto/update-rabbitmq.dto';
+import { TextOnlyDto } from '../dto/text-only.dto';
 
 @Controller()
 export class RabbitmqController {
@@ -65,6 +66,24 @@ export class RabbitmqController {
     console.log('fired');
     try {
       await this.rabbitmqService.addWebPages(urls);
+      // acknowledge the message after processing
+      channel.ack(originalMsg);
+    } catch (error) {
+      console.log(error);
+      // negatively acknowledge the message in case of error
+      channel.nack(originalMsg);
+    }
+  }
+
+  @EventPattern('text-only')
+  async textOnlyJob(@Payload() data: TextOnlyDto, @Ctx() context: RmqContext) {
+    console.log('Was I fired');
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+    // handle the message here
+    console.log('Received newJob event with data:', data);
+    try {
+      const result = await this.rabbitmqService.textOnlyJob(data);
       // acknowledge the message after processing
       channel.ack(originalMsg);
     } catch (error) {

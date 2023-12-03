@@ -9,6 +9,7 @@ import { WeaviateStore } from 'langchain/vectorstores/weaviate';
 // import "@tensorflow/tfjs-backend-cpu";
 import { TensorFlowEmbeddings } from 'langchain/embeddings/tensorflow';
 import { FullJob } from 'factsbolt-types';
+import { TextOnlyDto } from '../dto/text-only.dto';
 
 @Injectable()
 export class RabbitmqService implements OnModuleInit {
@@ -59,5 +60,11 @@ export class RabbitmqService implements OnModuleInit {
       metadataKeys: ['source'],
     });
     await this.utilsService.webBrowserDocumentProcess(webPages, vectorStore);
+  }
+
+  async textOnlyJob(data: TextOnlyDto) {
+    // const createJobDto = new CreateJobDto();
+    // createJobDto.link = data;
+    return this.jobsService.factCheckLang({ ...data });
   }
 }

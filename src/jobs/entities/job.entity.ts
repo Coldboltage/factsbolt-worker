@@ -68,3 +68,9 @@ export interface Words {
   confidence: number;
   speaker: string;
 }
+
+export interface Job {
+  title?: string;
+  transcriptionJob?: TranscriptionJob;
+  text?: string;
+}
