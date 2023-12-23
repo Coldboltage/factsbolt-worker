@@ -8,8 +8,8 @@ import weaviate from 'weaviate-ts-client';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
 // import "@tensorflow/tfjs-backend-cpu";
 import { TensorFlowEmbeddings } from 'langchain/embeddings/tensorflow';
-import { FullJob } from 'factsbolt-types';
 import { TextOnlyDto } from '../dto/text-only.dto';
+import { FullJob } from '../../utils/utils.types';
 
 @Injectable()
 export class RabbitmqService implements OnModuleInit {

@@ -1,7 +1,3 @@
-import { AmendedSpeech, JobStatus } from '../../utils/utils.types';
-
-export class Job {}
-
 export interface AudioInformation {
   url: string;
   filename: string;
@@ -27,13 +23,12 @@ export interface TranscriptionJob {
   assembleyId: string;
   link: string;
   text: string;
-  utterance: AmendedSpeech[];
 }
+
 export interface FullJob {
   video: VideoJob;
   transcription: TranscriptionJob;
   chatgpt: ChatGPT;
-  status: JobStatus;
 }
 
 export interface CompletedVideoJob {
@@ -53,12 +48,25 @@ export interface Content {
   content: string;
 }
 
+export interface Utterance {
+  speech: Speech[];
+}
+
+export interface AmendedUtterance {
+  speech: AmendedSpeech[];
+}
+
 export interface Speech {
   confidence: number;
   end: number;
   speaker: string;
   text: string;
   words: Words[];
+}
+
+export interface AmendedSpeech {
+  speaker: string;
+  text: string;
 }
 
 export interface Words {
@@ -69,8 +77,7 @@ export interface Words {
   speaker: string;
 }
 
-export interface Job {
-  title?: string;
-  transcriptionJob?: TranscriptionJob;
-  text?: string;
+export enum JobStatus {
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
 }

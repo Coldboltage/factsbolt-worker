@@ -1,5 +1,11 @@
 import { TensorFlowEmbeddings } from 'langchain/embeddings/tensorflow';
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  ImATeapotException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import {
@@ -18,17 +24,21 @@ const { dlAudio } = require('youtube-exec');
 const youtubedl = require('youtube-dl-exec');
 const { Configuration, OpenAIApi } = require('openai');
 const stripchar = require('stripchar').StripChar;
-import { AmendedSpeech, JobStatus } from 'factsbolt-types';
 import { OpenAI, PromptTemplate } from 'langchain';
 
 import { loadQAStuffChain } from 'langchain/chains';
-import { StructuredOutputParser } from 'langchain/output_parsers';
+import {
+  CommaSeparatedListOutputParser,
+  StructuredOutputParser,
+} from 'langchain/output_parsers';
 import { UtilsService } from '../utils/utils.service';
 import { HydeRetriever } from 'langchain/retrievers/hyde';
 import { faker } from '@faker-js/faker';
 
 import weaviate from 'weaviate-ts-client';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
+import { RunnableSequence } from 'langchain/schema/runnable';
+import { AmendedSpeech, JobStatus } from '../utils/utils.types';
 
 @Injectable()
 export class JobsService {
@@ -246,7 +256,7 @@ export class JobsService {
       temperature: 0,
       modelName: 'gpt-4-1106-preview',
       // modelName: 'gpt-4-0314',
-      // modelName: 'gpt-4',
+      // modelName: 'gpt-3.5-turbo-1106',
     });
 
     // Something wrong with the weaviate-ts-client types, so we need to disable
@@ -255,16 +265,29 @@ export class JobsService {
       host: process.env.WEAVIATE_HOST || 'localhost:8080',
     });
 
-    const llm = new OpenAI({ modelName: 'gpt-3.5-turbo-16k' });
+    const llm = new OpenAI({ temperature: 0, modelName: 'gpt-4-1106-preview' });
 
     // const baseCompressor = LLMChainExtractor.fromLLM(model);
 
     // First Phase
-    const searchTerm = !text
-      ? await this.transcriptSearchGen(transcriptionJob, title)
-      : await this.generalTextSearchGen(text, title);
-    const searchResults = await this.utilsService.searchTerm(searchTerm.query);
-    const searchResultFilter = this.utilsService.extractURLs(searchResults);
+    // const searchTerm = !text
+    //   ? await this.transcriptSearchGen(transcriptionJob, title)
+    //   : await this.generalTextSearchGen(text, title);
+    const searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
+
+    let searchResultFilter = [];
+
+    for (const term of searchTerm) {
+      let searchResults = await this.utilsService.searchTerm(term);
+      const currentSearchResultFilter =
+        this.utilsService.extractURLs(searchResults);
+      searchResultFilter = [
+        ...searchResultFilter,
+        ...currentSearchResultFilter,
+      ];
+    }
+
+    // let searchResultFilter = this.utilsService.extractURLs(searchResults);
 
     // Reuters Phase
     // const searchTermReuters = await this.reutersSearchGen(
@@ -294,63 +317,55 @@ export class JobsService {
     const vectorStoreRetriever = new HydeRetriever({
       vectorStore,
       llm,
-      k: 24,
+      k: 40,
       verbose: true,
     });
 
-    // const results = await vectorStoreRetriever.getRelevantDocuments(
-    //   `Using the title for context and details from the transcription, extract key entities and nuances. Then, combine these insights to form a contextually accurate search query, ensuring alignment with both the title and transcription's essence:
-    //   Title: ${title},
-    //   Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
-    // );
-
     const results = await vectorStoreRetriever.getRelevantDocuments(
-      `Conduct a thorough analysis of the given title and transcript to extract comprehensive key entities, themes, and detailed nuances. Create a search query that is rich in detail and accurately reflects the specific content and context provided by both the title and the transcript. The query should encapsulate the essence and the intricate aspects of the discussion, aiming to retrieve documents that offer a deep and direct insight into the subject matter at hand:
+      `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
+    
+      Construct search queries that target these identified subjects and claims, with a focus on those deemed more significant. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid the use of special characters like question marks, periods, or non-alphanumeric symbols. The goal is to create queries that delve into the specifics of the situation, giving priority to the most important aspects, such as key individual statements, significant legal proceedings, crucial organizational responses, and vital media coverage.
+    
+      Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects. Consider the significance of each fact in the context of the transcript and the broader discussion.
+    
+      Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription, with an emphasis on those of higher priority. This approach ensures a thorough exploration of each significant aspect of the event or issue, with a focus on the most impactful elements.
       Title: ${title},
-      Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}`,
+        Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}
+        
+        Lastly, please uses sources with this most credibility as priority`,
     );
+
+    // const results = await vectorStoreRetriever.getRelevantDocuments(
+    //   `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Focus on extracting these core elements from the transcription, concentrating on the specifics of the situation rather than the speaker's broader perspective or the general context of the discussion.
+
+    //   Construct search queries that specifically target these identified subjects and claims. Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects.
+
+    //   When formulating your queries, ensure they are precise and succinct, ideally limited to 32 words. Avoid the use of special characters like question marks, periods, or any non-alphanumeric symbols. The goal is to create queries that delve directly into the specifics of the situation, such as individual statements, legal proceedings, organizational responses, and media coverage.
+
+    //   Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. This approach ensures a thorough exploration of each significant aspect of the event or issue.
+    //   Title: ${title},
+    //     Transcript: ${
+    //       !text ? JSON.stringify(transcriptionJob.utterance) : text
+    //     }`,
+    // );
 
     const chain = loadQAStuffChain(model, {});
 
-    // const vectorStoreRetrieverFactFinder = new HydeRetriever({
-    //   vectorStore,
-    //   llm,
-    //   k: 4,
-    //   verbose: true,
-    // });
-
-    // const factSources =
-    //   await vectorStoreRetrieverFactFinder.getRelevantDocuments(
-    //     `Given the following title and transcript, first identify key phrases or entities that are the focus of factual claims, speculations, or opinions. Then, classify the content into broad categories such as 'economy', 'politics', etc. Finally, retrieve the most relevant documents that could help in fact-checking the identified facts, speculations, and opinions:
-    //     Title: ${title},
-    //     Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
-    //   );
-
-    // const vectorStoreRetrieverReutersFacts = new HydeRetriever({
-    //   vectorStore,
-    //   llm,
-    //   k: 4,
-    //   verbose: true,
-    // });
-
-    // const reutersFacts =
-    //   await vectorStoreRetrieverReutersFacts.getRelevantDocuments(
-    //     `Given the following title and transcript, first identify key phrases or entities that are the focus of factual claims, speculations, or opinions. Then, classify the content into broad categories such as 'economy', 'politics', etc. Finally, retrieve the most relevant documents that could help in fact-checking the identified facts, speculations, and opinions and are sourced by Reuters which can be found in the source URL:
-    //       Title: ${title},
-    //       Transcript: ${JSON.stringify(transcriptionJob.utterance, null, 2)}`,
-    //   );
-
-    const fullResults = [
-      ...results,
-      // ...factSources,
-      // ...reutersFacts
-    ];
+    const fullResults = [...results];
 
     const result = await chain.call({
       input_documents: fullResults,
       verbose: true,
       question: `
-      Please evaluate the following transcript with the help of the documents provided, as context that might have come out after the 2021 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Then, break down each major statement into individual points or closely related sentences for a nuanced understanding. For each point, identify it as either a Verified Fact, Provisionally Unverified, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
+      Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
+      
+      Carefully dissect the transcript into distinct contextual sections, each focusing on a separate point or topic, while ensuring that each section is aware of and relates coherently to every other section, to allow for precise and targeted fact-checking of each segment independently as well as in the context of the entire transcript.
+      
+      Break down these statements into individual points or closely related sentences to understand the nuances, but regularly refer back to the broader conversation to ensure that each point is evaluated within its proper context. This approach aims to provide a thorough dissection of each statement while preserving the interconnectedness and flow of the conversation. By doing this, the evaluation will be more balanced, acknowledging both the specific details of individual statements and their meaning within the larger dialogue. For each point, identify it as either a Verified Fact, Provisionally Unverified, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
+
+      When evaluating each statement within the provided documents/context, conduct a meticulous assessment of each source's credibility. This evaluation should include an in-depth examination of the author's expertise and qualifications, the source's history of accuracy and reliability, any potential biases or agendas, and the timeliness and relevance of the information presented. Cross-reference facts with multiple reputable sources, prioritizing primary sources and recognized authorities in the field. In cases of conflicting information, seek additional corroborative sources to discern the most robustly supported viewpoint. Document each step of this evaluation process, providing explicit justifications for the credibility assigned to each source. Regularly update and review source credibility, especially for ongoing analyses, to ensure the most current and accurate information is being utilized. This rigorous approach to source evaluation is crucial to ensure that the analysis is grounded not only in factual accuracy but also in the reliability and integrity of the information's origin.
+
+      Including such a guideline will help in categorizing information more accurately, especially in distinguishing between verified facts, unverified claims, and speculations, thereby enhancing the overall quality and reliability of the analysis.
 
       Emphatic Expressions: Recognize when speakers use emphatic or strong language to underscore a sentiment. Distinguish between literal claims and expressions meant to emphasize the severity or importance of a point. Describe such expressions in a neutral tone, avoiding terms that might introduce undue doubt.
 
@@ -358,17 +373,22 @@ export class JobsService {
 
       Identify the main target or subject of the speaker's comments. Is the speaker criticizing or commenting on a specific individual, a group of people, a system or institution, or a general concept or idea? Try to determine the primary source of the speaker's sentiment and the main issue at stake, based on their statements.
 
-      Verified facts: Identify any statement that presents a clear fact or claim about reality. Evaluate the statement by referencing your training data up to September 2021 and consider any documented context supplied. For every verified fact, you MUST either:
-      a) Quote directly from the provided context documents to serve as a citation with the source.
-      b) If referencing the training data, provide a specific reference akin to: "As found in a study from [Specific Year] in [Specific Source Name],..." or "According to [Authoritative Source]...".
-      Assert facts or claims that align with well-established knowledge or are corroborated by credible sources. If the statement in question aligns with your training data and the documented context, elaborate on why you believe it to be a verified fact. Discuss the factual accuracy, source credibility, and the potential implications or applications of the fact. If the fact is part of a larger narrative that has a specific intent (e.g., manipulative, speculative), note that context.
+      Ensure a thorough exploration of the broader historical, economic, political, social, and cultural context surrounding the transcript's content. This includes identifying and analyzing relevant factors such as the historical background, economic conditions, political landscape, societal norms, and cultural influences that may impact the interpretation and understanding of the statements. Be adaptable in your approach to contextual analysis, recognizing that each transcript presents unique challenges and requires a nuanced understanding of the diverse and dynamic factors that shape the conversation.
 
-      Provisionally Unverified: Statements or claims categorized as "Provisionally Unverified" are those where the available evidence or sources are insufficient for full verification but also do not warrant outright dismissal. This category recognizes the potential validity of the information while acknowledging that it requires further evidence or corroboration.
+      "Verified facts are statements that present clear facts or claims about reality. For every verified fact, evaluation involves referencing training data up to April 2023 and considering any documented context supplied. Verification must include corroboration from at least one neutral, independent source, in addition to any other source. This can be done by:
 
-      Contextually Manipulated Facts: Identify statements that present facts or claims verified through your training data up to September 2021, documented context, or credible public sources, but are potentially misleading or taken out of context. Label these as 'Contextually Manipulated Fact.' Confirm the factual accuracy of the statement and provide a detailed analysis of the context in which it is presented. Discuss what additional information is necessary for a full understanding and if the source or presentation contributes to a misleading or manipulative narrative. Evaluate the potential utility and harm of these manipulated facts, discussing how they could be used or misused in different scenarios. Include any counterpoints or alternative perspectives that could add valuable context to the fact in question, noting if these counterpoints are supported by your training data or other credible sources.
+      a) Quoting directly from context documents/context, including at least one neutral source, to serve as a citation.
+      b) Referencing training data or external information, providing a specific reference akin to: 'As found in a study from [Specific Year] in [Specific Source Name],' or 'According to [Authoritative Source],' ensuring at least one of these is a neutral source.
 
-      Unverified Claims: Identify statements that are presented as facts or claims about reality but lack verifiable evidence or reliable sources to substantiate them. Label these as 'Unverified Claim.' Provide a detailed analysis of why the statement remains unverified, including the absence of publicly accessible data or well-established knowledge in the field to support it. Discuss the potential implications of the claim, including how it could be used or misused in different contexts if accepted without verification.
+      Facts or claims must align with well-established knowledge and be corroborated by credible sources, including at least one independent and neutral source. When a statement aligns with training data and documented context, elaborate on why it is considered a verified fact, discussing its factual accuracy, source credibility, and potential implications or applications. If the fact is part of a larger narrative with a specific intent (e.g., manipulative, speculative), this context should be noted, with emphasis on neutral source corroboration to ensure unbiased verification."
 
+      Within the source verification, specifically reference the actual source used for verification, providing clarity on how it supports the fact.
+
+      Partially  Verified: Statements or claims categorized as "Partially  Verified" are those where the available evidence or sources are insufficient for full verification but also do not warrant outright dismissal. This category recognizes the potential validity of the information while acknowledging that it requires further evidence or corroboration.
+
+      Contextually Manipulated Facts: Identify statements that present facts or claims verified through your training data up to April 2023, documented context, or credible public sources, but are potentially misleading or taken out of context. Label these as 'Contextually Manipulated Fact.' Confirm the factual accuracy of the statement and provide a detailed analysis of the context in which it is presented. Discuss what additional information is necessary for a full understanding and if the source or presentation contributes to a misleading or manipulative narrative. Evaluate the potential utility and harm of these manipulated facts, discussing how they could be used or misused in different scenarios. Include any counterpoints or alternative perspectives that could add valuable context to the fact in question, noting if these counterpoints are supported by your training data or other credible sources.
+
+      Unverified Claims: Identify statements presented as facts or claims about reality that currently lack verifiable evidence or reliable sources for substantiation. Label these as 'Unverified Claim.' In your analysis, explain why the statement remains unverified, highlighting the limitations of the available resources or search capabilities that might have led to this conclusion. Note that while the claim remains unverified at the moment, it does not necessarily mean it is false — further research or future information could potentially verify it. Discuss the potential implications of the claim, including how it might be used or misused in different contexts if accepted without verification, and encourage the audience to consider the claim with a critical perspective, acknowledging the current limitations in verifying its accuracy.
       Personal facts: Note any statements that are based on personal experience or knowledge and are true for the individual, but can't be independently verified by others. Discuss the potential utility of this personal fact, including how it may influence understanding or perspective.
 
       Grounded Speculations: Label a statement as grounded speculation if it makes a prediction or guess about the future based on current trends or data. Discuss the current trends, data, or historical events that support this speculation. Evaluate the potential utility or impact if this speculation was acted upon.
@@ -409,6 +429,8 @@ export class JobsService {
 
       Labelled, Contextual Conclusion: Summarize the overall context in which facts, opinions, and speculations are presented in the transcript. Explicitly flag and highlight any recurring themes of contextual manipulation, misleading presentation, or instances where grounded opinions and speculations are used manipulatively. Assess the broader implications of these contextual issues on the validity of the speaker's arguments, the potential impact on public perception, and any attempts to steer the narrative away from the truth. This conclusion should guide the reader in understanding the practicality, reliability, and applicability of the content, especially in the context of any manipulative tactics identified.
 
+      Labelled, Middle Ground Conclusion: In this section, we synthesize the diverse viewpoints presented in the transcript, aiming to uncover common ground and balanced perspectives. This involves summarizing key points from all sides, identifying shared goals, values, or acknowledged facts, despite differing opinions. We highlight areas of potential agreement and overlap, suggesting how various perspectives might be reconciled to form a more comprehensive understanding of the issue. This balanced view is not only about finding a compromise but also about recognizing how different viewpoints contribute to a fuller picture. We propose pathways for constructive dialogue based on these findings, emphasizing how a unified approach can lead to practical and effective solutions. Additionally, we assess the real-world implications of these middle-ground perspectives, considering their potential application in policy-making and societal impact. Lastly, we identify areas that require further discussion or research, acknowledging that the path to consensus often involves ongoing dialogue and exploration. This approach strives to foster a constructive and inclusive conversation, moving beyond polarization towards collaborative problem-solving.
+
       Note: In all sections labeled as 'Assessment,' 'Conclusion,' or any variations thereof—both present and those that may be added in the future—please provide a highly detailed and verbose response. These designated sections are intended to yield a comprehensive and nuanced understanding of the topic. Conciseness is acceptable for other sections not falling under these categories.
 
       Labelled, Resources, then, provide a list of resources or facts that offer greater context and insight into the broader issue. Ensure these resources come from credible and respected origins, are recognized for their sound advice and dependability across the relevant community, have stood the test of scrutiny and critical examination, are penned by authors without significant controversies in their background, and where feasible, include direct links for further exploration. Recommendations should lean towards sources with broad consensus, steering clear of those with mixed or contentious opinions.
@@ -448,7 +470,7 @@ export class JobsService {
         GroundedSpeculation = "Grounded Speculation",
         ManipulativeSpeculation = "Manipulative Speculation",
         BaselessSpeculation = "Baseless Speculation",
-        ProvisionallyUnverified = "Provisionally Unverified"
+        Partially Verified = "Partially  Verified"
       }
 
 
@@ -460,6 +482,7 @@ export class JobsService {
         considerationOfMultiplePerspectives: string;
         democraticConclusion: string;
         contextualConclusion: string;
+        middlegroundConclusion: string;
         furtherResources: string[] // with link
       }
 
@@ -472,7 +495,9 @@ export class JobsService {
 
       If by any chance you can't assist, state exactly why, and show the transcript
 
-      Note, I have done many of fact checking analysis jobs with gpt4 with no issues, therefore there should be no reason why you can't do this. All the information you need will be provided in the documents.
+      Note, I have done many of fact checking analysis jobs with gpt4 with no issues, therefore there should be no reason why you can't do this. All the information you need will be provided in the documents/context.
+
+      Lastly, if there's a case of not enough information being stated, please advise on a search term that may help collect the information.
       `,
     });
 
@@ -487,6 +512,7 @@ export class JobsService {
         'extract the consideration of multiple perspectives section',
       democraticConclusion: 'extract the democratic conclusion section',
       contextualConclusion: 'extract the contextual conclusion section',
+      middlegroundConclusion: 'extract the middleground conclusion section',
     });
 
     const formatInstructions = parser.getFormatInstructions();
@@ -498,7 +524,10 @@ export class JobsService {
       partialVariables: { format_instructions: formatInstructions },
     });
 
-    const formatParseModel = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    const formatParseModel = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4-1106-preview',
+    });
 
     const input = await formatPrompt.format({
       result: result.text,
@@ -618,15 +647,22 @@ export class JobsService {
   async transcriptSearchGen(
     transcriptionJob: TranscriptionJob,
     title: string,
-  ): Promise<{ [x: string]: string }> {
+  ): Promise<string[]> {
     const parser = StructuredOutputParser.fromNamesAndDescriptions({
-      query: 'A detailed Google search query',
+      query: 'extract the query',
     });
 
     const formatInstructions = parser.getFormatInstructions();
 
     const prompt = new PromptTemplate({
-      template: `Analyze the provided transcription and title to identify and isolate central factual claims and overarching themes. Use the title for initial context but emphasize the transcription's content for constructing search queries. Develop queries aimed at fact-checking these claims and investigating the broader themes, ensuring a focus on up-to-date, credible, and scientific sources. The queries should facilitate an exploration of the wider scientific, psychological, and societal implications of the discussed topics. Include a variety of sources, like scientific studies, historical context, statistical data, and expert opinions across relevant fields, to gain a comprehensive understanding. Craft queries that are concise, limited to 32 words, and free of special characters such as ?, ., or any non-alphanumeric symbols {format_instructions} {title} {transcription}`,
+      template: `
+      Begin by analyzing the title for initial context. Delve into the transcription, identifying key subjects, specific claims, statistics, or notable statements. Focus on extracting these core elements from the transcription, rather than the speaker's broader perspective or the general context of the discussion.
+      
+      Construct a search query that specifically targets the amalgamation of these identified subjects and claims. Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their scientific, psychological, and societal aspects.
+      
+      When formulating your query, ensure it is precise and succinct, ideally limited to 32 words. Avoid the use of special characters like question marks, periods, or any non-alphanumeric symbols. The goal is to create a query that directly delves into the subjects themselves, such as understanding 'depression' in a broader sense when mentioned, rather than focusing on the speaker's perspective or the mere fact that the subject was discussed.
+      
+      Finally, from this analysis, create one comprehensive search query that encompasses all key subjects or claims identified in the transcription.. {format_instructions} {title} {transcription}`,
       inputVariables: ['transcription', 'title'],
       partialVariables: { format_instructions: formatInstructions },
     });
@@ -636,7 +672,12 @@ export class JobsService {
       title,
     });
 
-    const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    // const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    const model = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4-1106-preview',
+    });
+
     // const model = new OpenAI({ temperature: 0 });
 
     const response = await model.call(input);
@@ -644,7 +685,58 @@ export class JobsService {
     const parsed = await parser.parse(response);
 
     console.log(parsed);
-    return parsed;
+
+    // List test
+    // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
+    const parserList = new CommaSeparatedListOutputParser();
+
+    const chain = RunnableSequence.from([
+      PromptTemplate.fromTemplate(`Begin by analyzing the title for initial context. Delve into the transcription, identifying key subjects, specific claims, statistics, or notable statements, regardless of the topic. Assess the importance of each element based on its emphasis within the transcript and its potential impact on the overall narrative or discussion.
+
+      Construct search queries that are tailored to these identified subjects and claims. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid special characters like question marks, periods, or non-alphanumeric symbols. Focus on creating queries that explore the specifics of the situation, prioritizing those aspects that are most central or repeatedly mentioned in the transcript.
+      
+      Aim to gather comprehensive and detailed information about each subject, utilizing current, credible, and scientific sources. Explore each subject in depth, examining its relevance to the main event or issue, including legal, ethical, societal, historical, or cultural aspects, as applicable.
+      
+      When formulating your queries, consider the variety and complexity of topics that might arise in the transcript. Tailor your queries to cover a wide range of potential areas, from specific factual verifications to broader contextual inquiries.
+      
+      Finally, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. Organize these queries based on the relevance and importance of each topic within the context of the transcript. This approach ensures a thorough and adaptable exploration of each significant aspect of the event or issue, tailored to the specific content of the transcript. This list should be of the 3 best queries you can think of.
+
+      {format_instructions} {title} {transcription}`),
+      new OpenAI({
+        temperature: 0,
+        modelName: 'gpt-4-1106-preview',
+      }),
+      parserList,
+    ]);
+
+    // const chain = RunnableSequence.from([
+    //   PromptTemplate.fromTemplate(`Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Focus on extracting these core elements from the transcription, concentrating on the specifics of the situation rather than the speaker's broader perspective or the general context of the discussion.
+
+    //   Construct search queries that specifically target these identified subjects and claims. Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects.
+
+    //   When formulating your queries, ensure they are precise and succinct, ideally limited to 32 words. Avoid the use of special characters like question marks, periods, or any non-alphanumeric symbols. The goal is to create queries that delve directly into the specifics of the situation, such as individual statements, legal proceedings, organizational responses, and media coverage.
+
+    //   Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. This approach ensures a thorough exploration of each significant aspect of the event or issue.
+
+    //   {format_instructions} {title} {transcription}`),
+    //   new OpenAI({
+    //     temperature: 0,
+    //     modelName: 'gpt-4-1106-preview',
+    //   }),
+    //   parserList,
+    // ]);
+
+    const responseList = await chain.invoke({
+      transcription: transcriptionJob.text,
+      title,
+      format_instructions: parserList.getFormatInstructions(),
+    });
+
+    responseList.push(parsed.query);
+    console.log(Array.from(new Set(responseList)));
+    console.log(responseList.length);
+    return Array.from(new Set(responseList));
+    // return Array.from(new Set([parsed.query]));
   }
 
   async generalTextSearchGen(
@@ -658,7 +750,13 @@ export class JobsService {
     const formatInstructions = parser.getFormatInstructions();
 
     const prompt = new PromptTemplate({
-      template: `Using the title as a primary context, analyze the provided transcription in detail. The title often offers key insights into the overarching theme. Identify specific entities, events, or nuances from both the title and transcription, and then generate a detailed and contextually accurate search term for research on Google. Ensure that your query is aligned with the essence of both the title and the transcription. {format_instructions} {title} {transcription}`,
+      template: `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements. Focus on extracting these core elements from the transcription, rather than the speaker's broader perspective or the general context of the discussion.
+
+      Construct search queries that specifically target these identified subjects and claims. Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their scientific, psychological, and societal aspects.
+      
+      When formulating your queries, ensure they are precise and succinct, ideally limited to 32 words. Avoid the use of special characters like question marks, periods, or any non-alphanumeric symbols. The goal is to create queries that directly delve into the subjects themselves, such as understanding 'depression' in a broader sense when mentioned, rather than focusing on the speaker's perspective or the mere fact that the subject was discussed.
+      
+      Finally, from this analysis, create one targeted search query per key subject or claim identified in the transcription. Create one search query. {format_instructions} {title} {transcription}`,
       inputVariables: ['transcription', 'title'],
       partialVariables: { format_instructions: formatInstructions },
     });
@@ -668,7 +766,10 @@ export class JobsService {
       title,
     });
 
-    const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    const model = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4-1106-preview',
+    });
     // const model = new OpenAI({ temperature: 0 });
 
     const response = await model.call(input);
@@ -700,7 +801,10 @@ export class JobsService {
       title,
     });
 
-    const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    const model = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4-1106-preview',
+    });
     // const model = new OpenAI({ temperature: 0 });
 
     const response = await model.call(input);
@@ -736,7 +840,10 @@ export class JobsService {
       title,
     });
 
-    const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    const model = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4-1106-preview',
+    });
     // const model = new OpenAI({ temperature: 0 });
 
     const response = await model.call(input);
