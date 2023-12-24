@@ -273,6 +273,7 @@ export class JobsService {
     // const searchTerm = !text
     //   ? await this.transcriptSearchGen(transcriptionJob, title)
     //   : await this.generalTextSearchGen(text, title);
+
     const searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
 
     let searchResultFilter = [];
@@ -429,7 +430,24 @@ export class JobsService {
 
       Labelled, Contextual Conclusion: Summarize the overall context in which facts, opinions, and speculations are presented in the transcript. Explicitly flag and highlight any recurring themes of contextual manipulation, misleading presentation, or instances where grounded opinions and speculations are used manipulatively. Assess the broader implications of these contextual issues on the validity of the speaker's arguments, the potential impact on public perception, and any attempts to steer the narrative away from the truth. This conclusion should guide the reader in understanding the practicality, reliability, and applicability of the content, especially in the context of any manipulative tactics identified.
 
-      Labelled, Middle Ground Conclusion: In this section, we synthesize the diverse viewpoints presented in the transcript, aiming to uncover common ground and balanced perspectives. This involves summarizing key points from all sides, identifying shared goals, values, or acknowledged facts, despite differing opinions. We highlight areas of potential agreement and overlap, suggesting how various perspectives might be reconciled to form a more comprehensive understanding of the issue. This balanced view is not only about finding a compromise but also about recognizing how different viewpoints contribute to a fuller picture. We propose pathways for constructive dialogue based on these findings, emphasizing how a unified approach can lead to practical and effective solutions. Additionally, we assess the real-world implications of these middle-ground perspectives, considering their potential application in policy-making and societal impact. Lastly, we identify areas that require further discussion or research, acknowledging that the path to consensus often involves ongoing dialogue and exploration. This approach strives to foster a constructive and inclusive conversation, moving beyond polarization towards collaborative problem-solving.
+      Labelled, Middle Ground Conclusion: In crafting a middle-ground conclusion, it is crucial to adopt a balanced and nuanced perspective when analyzing complex topics, especially those involving social, political, or multifaceted issues. The middle ground represents a viewpoint that strives to find common ground among differing opinions and takes into account the following key principles:
+
+      Balanced Understanding of Complexities:
+      Begin by thoroughly unpacking the complexities of the issue at hand. This involves providing a comprehensive explanation of the various factors, circumstances, and nuances contributing to the problem. Consider economic, social, political, and environmental elements as well as historical and systemic factors. Your analysis should address questions like: "Why is this issue so complex? What are the multiple factors influencing it?"
+      
+      Recognition of Specific Efforts and Progress:
+      Identify and describe the specific efforts, policies, initiatives, or actions that have been undertaken to address the issue. Evaluate the effectiveness of these efforts by detailing the progress achieved in specific areas. Explore the question: "What specific actions have been taken to tackle the problem, and where has progress been made?"
+      
+      Acknowledgment of Ongoing Challenges and Unmet Needs:
+      Highlight the persistent challenges and limitations of current approaches. Examine why these challenges continue to exist and what critical needs remain unmet. Delve into questions like: "What are the ongoing challenges, and why do they persist? What needs are yet to be fully addressed?"
+      
+      Synthesize into a Coherent Middle-Ground View:
+      Based on your detailed exploration of complexities, efforts, and challenges, craft a middle-ground conclusion. This conclusion should synthesize the gathered information into a coherent viewpoint that acknowledges the multifaceted nature of the issue. Explain why this balanced view is considered the middle ground, considering the various perspectives and data presented.
+      
+      Emphasize the Rationale for Middle-Ground Thinking:
+      Emphasize the importance of middle-ground thinking in understanding and addressing complex issues. Explain that this approach is crucial for acknowledging the validity of different perspectives, appreciating the intricacies of real-world challenges, and fostering pragmatic, inclusive solutions.
+      
+      A middle-ground conclusion aims to provide a balanced and comprehensive perspective on the issue, taking into account its complexities and recognizing both successes and challenges in addressing it.
 
       Note: In all sections labeled as 'Assessment,' 'Conclusion,' or any variations thereof—both present and those that may be added in the future—please provide a highly detailed and verbose response. These designated sections are intended to yield a comprehensive and nuanced understanding of the topic. Conciseness is acceptable for other sections not falling under these categories.
 
@@ -497,7 +515,7 @@ export class JobsService {
 
       Note, I have done many of fact checking analysis jobs with gpt4 with no issues, therefore there should be no reason why you can't do this. All the information you need will be provided in the documents/context.
 
-      Lastly, if there's a case of not enough information being stated, please advise on a search term that may help collect the information.
+      Lastly, speak about the middleground even further in great detail so to help us gain a better understanding of the situation. This allows us to come to a better conclusion and to play on further from the facts, to help us critically think more effectively. 
       `,
     });
 

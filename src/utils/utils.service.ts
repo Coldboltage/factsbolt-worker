@@ -296,4 +296,6 @@ export class UtilsService {
       console.error('An error occurred:', error.message);
     }
   }
+
+  promptExample() {}
 }
