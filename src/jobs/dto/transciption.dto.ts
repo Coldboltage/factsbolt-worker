@@ -1,5 +1,5 @@
 import { IsString } from 'class-validator';
-import { AmendedSpeech } from 'factsbolt-types';
+import { AmendedSpeech } from '../../utils/utils.types';
 
 export class TranscriptionDto {
   @IsString()

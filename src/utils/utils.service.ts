@@ -6,8 +6,11 @@ import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { Document } from 'langchain/document';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
 import { CreateJobDto } from '../jobs/dto/create-job.dto';
-import { VideoJob, AudioInformation } from '../jobs/entities/job.entity';
-import { CompletedVideoJob } from 'factsbolt-types';
+import {
+  VideoJob,
+  AudioInformation,
+  CompletedVideoJob,
+} from '../jobs/entities/job.entity';
 import { CheerioWebBaseLoader } from 'langchain/document_loaders/web/cheerio';
 const path = require('path');
 const youtubedl = require('youtube-dl-exec');
@@ -41,13 +44,13 @@ export class UtilsService {
     const response = await fetch(
       `https://api.scraperapi.com/structured/google/search?api_key=${process.env.SCRAPPER_API}&query=${query}`,
     );
-    console.log(
-      `https://api.scraperapi.com/structured/google/search?api_key=${process.env.SCRAPPER_API}&query=${query}`,
-    );
     const data = await response.json();
     console.log(data.organic_results);
 
     const siteLinks: SearchResult[] = [];
+
+    if (!data.organic_results) return siteLinks;
+
     for (const siteResult of data.organic_results) {
       const siteInfo = {
         ...siteResult,
@@ -56,8 +59,6 @@ export class UtilsService {
       delete siteInfo.link;
       siteLinks.push(siteInfo);
     }
-
-    console.log(data.organic_results);
     return siteLinks;
   }
 
@@ -80,7 +81,7 @@ export class UtilsService {
     this.logger.debug(`siteLink parameter: ${siteLinks}`);
     for (const url of siteLinks) {
       this.logger.log(`Documenting ${url}`);
-      if (!url || url.includes('youtube')) continue;
+      if (!url || url.includes('youtube') || url.includes('.pdf')) continue;
 
       // const loader = new PuppeteerWebBaseLoader(url, {
       //   launchOptions: {
@@ -92,18 +93,23 @@ export class UtilsService {
 
       // const loader = new CheerioWebBaseLoader(result);
 
-      let docs;
+      let docs: Document<Record<string, any>>[];
 
       try {
+        this.logger.debug('loading started');
         docs = await loader.load();
       } catch (error) {
         // console.log(`${result} failed`);
         continue;
       }
 
+      this.logger.debug('loader completed');
+
+      // Check from splitter if that's the bottleneck for bit pdf files
+
       const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
         chunkSize: 600, // Roughly double the current estimated chunk size
-        chunkOverlap: 10, // This is arbitrary; adjust based on your needs
+        chunkOverlap: 20, // This is arbitrary; adjust based on your needs
         separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
       });
 
@@ -111,24 +117,52 @@ export class UtilsService {
 
       const sequence = splitter.pipe(transformer);
 
-      let newDocuments: Document[];
+      this.logger.debug('splitter completed');
+
+      let newDocuments;
+
+      // Invoking is the bottle neck learn what this is.
+
+      const invoke = () =>
+        Promise.race([
+          new Promise((_, reject) =>
+            // timeout after 10 seconds
+            setTimeout(() => reject(new Error('timed out')), 10000),
+          ),
+          sequence.invoke(docs),
+        ]);
 
       try {
-        newDocuments = await sequence.invoke(docs);
+        // newDocuments = await sequence.invoke(docs);
+        newDocuments = await invoke();
       } catch (error) {
         console.log('invoke broke');
         continue;
       }
 
-      const filteredDocuments: Document[] = newDocuments.filter(
-        (doc: Document) => {
+      this.logger.debug('invoke completed');
+
+      let filteredDocuments: Document[];
+
+      if (Array.isArray(newDocuments)) {
+        filteredDocuments = newDocuments.filter((doc: Document) => {
           return doc.pageContent ? true : false;
-        },
-      );
+        });
+      }
+
+      if (!filteredDocuments) {
+        this.logger.error('no documents found');
+        continue;
+      }
 
       this.logger.debug(
         `Filtered Documents Amount: ${filteredDocuments.length}`,
       );
+
+      if (filteredDocuments.length > 1200) {
+        this.logger.debug('too many documents to handle');
+        continue;
+      }
 
       try {
         await vectorStore.delete({
@@ -262,4 +296,6 @@ export class UtilsService {
       console.error('An error occurred:', error.message);
     }
   }
+
+  promptExample() {}
 }
