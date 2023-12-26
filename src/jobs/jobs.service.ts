@@ -370,9 +370,9 @@ export class JobsService {
       question: `
       Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. 
 
-      Firstly, succinctly summarize the main claim within a 12-word limit to capture the essence of the argument. Next, categorize the claim and transcript/text, based on how it aligns with established scientific knowledge and empirical evidence, without any predetermined bias towards a specific category. Finally, provide a rationale for the chosen categorization, emphasizing the factual accuracies or inaccuracies of the claim, and discuss its consistency or conflict with scientific consensus. This analysis should incorporate relevant aspects from a wide range of disciplines, not limited to biological, psychological, or medical research. Depending on the nature of the claim, this might include references to historical records, economic data, social studies, technological advancements, environmental science, or other relevant areas of knowledge.
+      Labelled TL:DR, Identify the central claim within the text in 15 words based on the transcript/text. Afterwards, categorize the claim using the transcript/text and context/documents, based on how it aligns with established scientific knowledge and empirical evidence, without any predetermined bias towards a specific category. Lastly, explain the choice in category
             
-      Next, create a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
+      Labelled Context Summary, create a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
       
       In your analysis, it's crucial to treat each sentence or question in the transcript as a separate segment for evaluation. Follow these guidelines:
 
@@ -409,7 +409,7 @@ export class JobsService {
       [Repeat the structure for the next sentence]
       By following this structured approach, ensure that each sentence or question is analyzed as an individual unit, maintaining clarity and focus in the evaluation of each segment.
 
-      Break down these statements into individual points or closely related sentences to understand the nuances, but regularly refer back to the broader conversation to ensure that each point is evaluated within its proper context. This approach aims to provide a thorough dissection of each statement while preserving the interconnectedness and flow of the conversation. By doing this, the evaluation will be more balanced, acknowledging both the specific details of individual statements and their meaning within the larger dialogue. For each point, identify it as either a Verified Fact, Partially  Verified, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Factually Incorrect, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
+      Break down these statements into individual points or closely related sentences to understand the nuances, but regularly refer back to the broader conversation to ensure that each point is evaluated within its proper context. This approach aims to provide a thorough dissection of each statement while preserving the interconnectedness and flow of the conversation. By doing this, the evaluation will be more balanced, acknowledging both the specific details of individual statements and their meaning within the larger dialogue. For each point, identify it as either a Verified Fact, Partially  Verified, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Factually Incorrect, Question, or Incomplete Statement, Manipulative Question. Consider the context in which the statement is made to ensure accurate categorization. In addition to contextual analysis, please ensure to assess the factual accuracy of each statement, taking into account established scientific knowledge and empirical evidence when applicable.
 
       When evaluating each statement within the provided documents/context, conduct a meticulous assessment of each source's credibility. This evaluation should include an in-depth examination of the author's expertise and qualifications, the source's history of accuracy and reliability, any potential biases or agendas, and the timeliness and relevance of the information presented. Cross-reference facts with multiple reputable sources, prioritizing primary sources and recognized authorities in the field. In cases of conflicting information, seek additional corroborative sources to discern the most robustly supported viewpoint. Document each step of this evaluation process, providing explicit justifications for the credibility assigned to each source. Regularly update and review source credibility, especially for ongoing analyses, to ensure the most current and accurate information is being utilized. This rigorous approach to source evaluation is crucial to ensure that the analysis is grounded not only in factual accuracy but also in the reliability and integrity of the information's origin.
 
@@ -440,7 +440,7 @@ export class JobsService {
 
       Factually Incorrect: This category applies to statements, claims, opinions, or speculations that either directly contradict current, well-established knowledge and empirical evidence, or represent a significant misunderstanding or misrepresentation of such knowledge. This includes not only statements that are demonstrably false but also those that, while possibly grounded in personal experience or belief, are at odds with established scientific consensus or factual understanding. The key aspect of this category is the presence of a clear conflict between the statement and established facts or scientific understanding, regardless of whether the statement is framed as a personal belief or experience.
       
-      Personal facts: Note any statements that are based on personal experience or knowledge and are true for the individual, but can't be independently verified by others. Discuss the potential utility of this personal fact, including how it may influence understanding or perspective.
+      Personal Facts: Identify statements that are presented as personal facts based on an individual's experience or knowledge but cannot be independently verified by others. Exercise caution when categorizing statements as personal facts, as they may be subject to falsehood or manipulation. In your analysis, discuss the potential utility of the statement and how it may influence understanding or perspective, while remaining vigilant about the possibility of deception or manipulation. Consider requesting evidence or corroboration if available to assess the accuracy of the statement.
 
       Fundamentally Confirmed: This categorization applies to statements where the core idea or principal assertion is validated through credible and independent sources, as per the latest known data, including training data up to April 2023. The term 'Fundamentally Confirmed' specifically highlights that the foundational aspect of the claim is verified and factual. However, it simultaneously brings attention to the fact that certain details, specific methods, or subsidiary elements within the claim have not been verified or may remain inconclusive. This classification is designed to explicitly differentiate between the aspects of the claim that are substantiated and those that are not, thereby providing a clear understanding of the extent of verification. The aim is to affirm the verified truth of the central claim while maintaining transparency about the unverified status of specific details, ensuring an informed and nuanced understanding of the claim's overall veracity.
 
@@ -457,6 +457,10 @@ export class JobsService {
       Manipulative Speculation: Identify statements that make predictions or guesses, whether based on current trends, data, or without any clear basis, but are presented in a misleading or deceptive manner. Label these as 'Manipulative Speculation'. Discuss any trends, data, or historical events that may or may not support this speculation, and elaborate on how the statement is being used to deceive or mislead.
 
       Questions: These are inquiries or requests for information, often seeking clarification or further details on a particular topic. Discuss the utility of these questions in providing greater clarity or understanding.
+
+      Manipulative Question: Identify questions that are presented in a way that aims to deceive, mislead, or provoke strong emotional responses. These questions may use emotionally charged language, exaggerations, or rhetorical devices designed to manipulate the audience's perception. Provide an analysis that discusses the manipulative aspects of the question, including the underlying evidence or reasoning, if any, and how it is being used manipulatively.
+
+      Incomplete Statement: Identify statements that lack essential information or context to convey a clear meaning on their own. These statements may require additional information or elaboration to be fully understood. Use this category when a statement is presented in a way that is fragmented, vague, or lacking crucial details, making it challenging to categorize it otherwise.
 
       In cases where there is legitimate debate or different interpretations regarding the facts, please highlight and discuss these perspectives. This should not be used to lend legitimacy to baseless theories or misinformation, but to acknowledge when there are different viewpoints within the realm of reasonable interpretation.
 
@@ -534,8 +538,6 @@ export class JobsService {
       }
 
       enum Category {
-        Question = "Question",
-        IncompleteStatement = "Incomplete Statement",
         GroundedOpinion = "Grounded Opinion",
         ManipulativeOpinion = "Manipulative Opinion"
         BaselessOpinion = "Baseless Opinion",
@@ -546,9 +548,12 @@ export class JobsService {
         GroundedSpeculation = "Grounded Speculation",
         ManipulativeSpeculation = "Manipulative Speculation",
         BaselessSpeculation = "Baseless Speculation",
-        PartiallyVerified = "Partially  Verified"
-        FundamentallyConfirmed = "Fundamentally Confirmed"
-        FactuallyIncorrect = "Factually Incorrect
+        PartiallyVerified = "Partially  Verified",
+        FundamentallyConfirmed = "Fundamentally Confirmed",
+        FactuallyIncorrect = "Factually Incorrect,
+        Question = "Question",
+        IncompleteStatement = "Incomplete Statement",
+        ManipulativeQuestion = "Manipulative Question"
       }
 
 
@@ -768,6 +773,40 @@ export class JobsService {
 
     console.log(parsed);
 
+    const parserMainClaim = StructuredOutputParser.fromNamesAndDescriptions({
+      query: 'extract the query',
+    });
+
+    const formatInstructionsMainClaim = parserMainClaim.getFormatInstructions();
+
+    const promptMainClaim = new PromptTemplate({
+      template: `
+      Succinctly state the main claim within a 16-word limit, capturing its essence as supported by the provided transcript/text and any relevant documents/context
+      
+      {format_instructions} {title} {transcription}`,
+      inputVariables: ['transcription', 'title'],
+      partialVariables: { format_instructions: formatInstructionsMainClaim },
+    });
+
+    const inputMainClaim = await promptMainClaim.format({
+      transcription: transcriptionJob.text,
+      title,
+    });
+
+    // const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    const modelMainClaim = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4-1106-preview',
+    });
+
+    // const model = new OpenAI({ temperature: 0 });
+
+    const responseMainClaim = await modelMainClaim.call(inputMainClaim);
+
+    const parsedMainClaim = await parserMainClaim.parse(responseMainClaim);
+
+    console.log(parsedMainClaim);
+
     // List test
     // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
     const parserList = new CommaSeparatedListOutputParser();
@@ -791,23 +830,6 @@ export class JobsService {
       parserList,
     ]);
 
-    // const chain = RunnableSequence.from([
-    //   PromptTemplate.fromTemplate(`Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Focus on extracting these core elements from the transcription, concentrating on the specifics of the situation rather than the speaker's broader perspective or the general context of the discussion.
-
-    //   Construct search queries that specifically target these identified subjects and claims. Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects.
-
-    //   When formulating your queries, ensure they are precise and succinct, ideally limited to 32 words. Avoid the use of special characters like question marks, periods, or any non-alphanumeric symbols. The goal is to create queries that delve directly into the specifics of the situation, such as individual statements, legal proceedings, organizational responses, and media coverage.
-
-    //   Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. This approach ensures a thorough exploration of each significant aspect of the event or issue.
-
-    //   {format_instructions} {title} {transcription}`),
-    //   new OpenAI({
-    //     temperature: 0,
-    //     modelName: 'gpt-4-1106-preview',
-    //   }),
-    //   parserList,
-    // ]);
-
     const responseList = await chain.invoke({
       transcription: transcriptionJob.text,
       title,
@@ -815,6 +837,7 @@ export class JobsService {
     });
 
     responseList.push(parsed.query);
+    responseList.push(parsedMainClaim.query);
     console.log(Array.from(new Set(responseList)));
     console.log(responseList.length);
     return Array.from(new Set(responseList));

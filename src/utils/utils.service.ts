@@ -92,7 +92,13 @@ export class UtilsService {
     this.logger.debug(`siteLink parameter: ${siteLinks}`);
     for (const url of siteLinks) {
       this.logger.log(`Documenting ${url}`);
-      if (!url || url.includes('youtube') || url.includes('pdf')) continue;
+      if (
+        !url ||
+        url.includes('youtube') ||
+        url.includes('pdf') ||
+        url.includes('.cgi')
+      )
+        continue;
 
       // const loader = new PuppeteerWebBaseLoader(url, {
       //   launchOptions: {
