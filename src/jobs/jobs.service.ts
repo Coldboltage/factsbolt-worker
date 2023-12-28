@@ -407,14 +407,19 @@ export class JobsService {
       [Repeat the structure for the next sentence]
       By following this structured approach, ensure that each sentence or question is analyzed as an individual unit, maintaining clarity and focus in the evaluation of each segment.
 
-      Initiate an objective analysis of the statements, prioritizing their empirical content over the personal attributes or perspectives of the speaker. Each statement should be dissected to uncover any inherent factual claims, analyzed in the context of established knowledge and scientific consensus. Avoid attributing the statements to the speaker's personal views, focusing instead on the broader implications and veracity of the claims themselves.
+      Undertake a detailed and empirical evaluation of each statement in the transcript, ensuring that the analysis transcends the speaker's personal perspectives. Each statement should be dissected for inherent factual claims and scrutinized against established knowledge and scientific consensus.
 
-      The categories for analysis should include Verified Fact, Partially Verified, Oversimplified Claim, Misinformed Claim, Contextually Manipulated Fact, Factually Incorrect, Incomplete Statement, etc. Each category should be chosen based on the objective content of the statement and its alignment with broader empirical evidence, rather than the speaker's perceived beliefs or experiences.
-      
-      For instance, when a statement like 'I can't feel depressed' is analyzed, instead of categorizing it as a 'Personal Fact' based on the speaker's self-perception, evaluate the claim against psychological and medical consensus on human emotions. Similarly, rhetorical questions or metaphorical statements should be scrutinized for any underlying factual assertions they might imply, rather than taking them at face value as expressions of the speaker's viewpoint.
-      
-      Through this approach, the analysis will yield a more factually grounded categorization of each statement, aligning with empirical data and established scientific understanding, thereby providing a clearer and more objective understanding of the conversation.
-      When evaluating each statement within the provided documents/context, conduct a meticulous assessment of each source's credibility. This evaluation should include an in-depth examination of the author's expertise and qualifications, the source's history of accuracy and reliability, any potential biases or agendas, and the timeliness and relevance of the information presented. Cross-reference facts with multiple reputable sources, prioritizing primary sources and recognized authorities in the field. In cases of conflicting information, seek additional corroborative sources to discern the most robustly supported viewpoint. Document each step of this evaluation process, providing explicit justifications for the credibility assigned to each source. Regularly update and review source credibility, especially for ongoing analyses, to ensure the most current and accurate information is being utilized. This rigorous approach to source evaluation is crucial to ensure that the analysis is grounded not only in factual accuracy but also in the reliability and integrity of the information's origin.
+      For each segment:
+
+      Decontextualize and Analyze: Remove the focus from the speaker's personal context and analyze the statement for its inherent empirical content. Shift the emphasis from personal opinions to factual claims within the statement.
+
+      Categorize Objectively: Assign categories based on the objective content of the statement, considering Verified Fact, Partially Verified, Oversimplified Claim, Misinformed Claim, Contextually Manipulated Fact, Factually Incorrect, Incomplete Statement, etc. Choose the category that aligns most closely with empirical evidence and factual accuracy, irrespective of the speaker's personal views or experiences.
+
+      Consensus Check: For each statement, assess if it aligns or diverges from recognized best practices, consensus, or research in the field. Evaluate the content to determine its correspondence with prevailing consensus, recognized best practices, robust evidence, and latest accepted research. Comment on how the statement's content aligns or contrasts with these standards, especially noting instances of both grounded and baseless claims.
+
+      Broader Contextual Analysis: Expand the assessment to include broader societal and scientific perspectives. Ensure the inclusion of additional context is directly relevant to the factual evaluation of the statement.
+
+      This approach will yield a more factually grounded categorization of each statement, aligning with empirical data and established scientific understanding. The aim is to provide a clearer and more objective understanding of the conversation, emphasizing the distinction between personal beliefs and objective truths, especially in cases where personal views are in direct contradiction with well-established facts or widely accepted scientific understanding.
 
       Including such a guideline will help in categorizing information more accurately, especially in distinguishing between verified facts, unverified claims, and speculations, thereby enhancing the overall quality and reliability of the analysis.
 
