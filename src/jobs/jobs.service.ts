@@ -371,19 +371,10 @@ export class JobsService {
       Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. 
             
       Labelled Context Summary, create a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
-      
-      In your analysis, it's crucial to treat each sentence or question in the transcript as a separate segment for evaluation. Follow these guidelines:
 
-      Sentence-by-Sentence Breakdown: Every sentence or question, marked by a full stop or a question mark, should be considered as a distinct segment. This means breaking down the transcript into smaller parts, each ending at a punctuation mark that concludes a sentence or a question.
+      ## Evaluate the Transcript with an Emphasis on FactCheckSentence Structure
 
-      Individual Analysis of Segments: Apply the FactCheckSentence structure to each of these segments. This involves:
-
-      Speaker: Identify the speaker for the segment.
-      Text: Include the exact text of the sentence or question.
-      Category: Assign an appropriate category from the Category enumeration.
-      Explanation: Provide a detailed explanation for the categorization.
-      Source Verification: Detail the source verification, particularly for factual claims.
-      Explicit Segmentation in Output: Clearly indicate the segmentation in the output. Use a distinct header for each segment, followed by the structured analysis:
+      Sentence-by-Sentence Breakdown: Every sentence or question, marked by a full stop or a question mark, should be considered as a distinct segment, a FactCheckSentence. This means breaking down the transcript into smaller parts, each ending at a punctuation mark that concludes a sentence or a question.
 
       Segment [Number] - Speaker [Name]: [Brief Descriptor]
       Speaker: [Name]
@@ -393,35 +384,27 @@ export class JobsService {
       Source Verification: [Verification details]
       Continuous Segmentation: Continue this process for each sentence or question in the transcript, ensuring that no segment contains more than one sentence or question.
 
-      For example:
+      ### 1. Comprehensive Analysis
+   - Approach each statement in the transcript as a potential FactCheckSentence, focusing on empirical content and factual accuracy.
 
-      Segment 1 - Speaker A: Concept of Galactic Meaning
+    ### 2. Speaker Identification
+      - Note the speaker for each FactCheckSentence, with emphasis on content over identity.
 
-      Speaker: Speaker A
-      Text: "Let's imagine that in our galaxy, 400 billion suns..."
-      Category: [Category]
-      Explanation: [Explanation]
-      Source Verification: [Verification]
-      Segment 2 - Speaker A: Perceiving Beauty
+    ### 3. Text Analysis and Decontextualization
+      - Analyze and decontextualize the text of each statement. Remove focus from the speaker's personal context and concentrate on the inherent empirical content of the statement.
 
-      [Repeat the structure for the next sentence]
-      By following this structured approach, ensure that each sentence or question is analyzed as an individual unit, maintaining clarity and focus in the evaluation of each segment.
+    ### 4. Objective Categorization
+      - For the category field of FactCheckSentence, assign categories based on the objective content of the statement. Consider categories like Verified Fact, Partially Verified, etc., focusing on factual accuracy and empirical evidence.
 
-      Undertake a detailed and empirical evaluation of each statement in the transcript, ensuring that the analysis transcends the speaker's personal perspectives. Each statement should be dissected for inherent factual claims and scrutinized against established knowledge and scientific consensus.
+    ### 5. Consensus Check and Broader Contextual Analysis
+      - Conduct a consensus check for each statement to see if it aligns with established best practices and research. Expand the assessment to include broader societal and scientific perspectives.
 
-      For each segment:
-
-      Decontextualize and Analyze: Remove the focus from the speaker's personal context and analyze the statement for its inherent empirical content. Shift the emphasis from personal opinions to factual claims within the statement.
-
-      Categorize Objectively: Assign categories based on the objective content of the statement, considering Verified Fact, Partially Verified, Oversimplified Claim, Misinformed Claim, Contextually Manipulated Fact, Factually Incorrect, Incomplete Statement, etc. Choose the category that aligns most closely with empirical evidence and factual accuracy, irrespective of the speaker's personal views or experiences.
-
-      Consensus Check: For each statement, assess if it aligns or diverges from recognized best practices, consensus, or research in the field. Evaluate the content to determine its correspondence with prevailing consensus, recognized best practices, robust evidence, and latest accepted research. Comment on how the statement's content aligns or contrasts with these standards, especially noting instances of both grounded and baseless claims.
-
-      Broader Contextual Analysis: Expand the assessment to include broader societal and scientific perspectives. Ensure the inclusion of additional context is directly relevant to the factual evaluation of the statement.
-
-      This approach will yield a more factually grounded categorization of each statement, aligning with empirical data and established scientific understanding. The aim is to provide a clearer and more objective understanding of the conversation, emphasizing the distinction between personal beliefs and objective truths, especially in cases where personal views are in direct contradiction with well-established facts or widely accepted scientific understanding.
+    ### 6. Detailed Explanation and Source Verification
+      - Provide a detailed explanation for each categorization and meticulously verify sources, particularly for factual claims, within the explanation and sourceVerification fields of FactCheckSentence.
 
       Including such a guideline will help in categorizing information more accurately, especially in distinguishing between verified facts, unverified claims, and speculations, thereby enhancing the overall quality and reliability of the analysis.
+
+      ## Extra information for FactCheckSentence
 
       Emphatic Expressions: Recognize when speakers use emphatic or strong language to underscore a sentiment. Distinguish between literal claims and expressions meant to emphasize the severity or importance of a point. Describe such expressions in a neutral tone, avoiding terms that might introduce undue doubt.
 
@@ -430,6 +413,8 @@ export class JobsService {
       Identify the main target or subject of the speaker's comments. Is the speaker criticizing or commenting on a specific individual, a group of people, a system or institution, or a general concept or idea? Try to determine the primary source of the speaker's sentiment and the main issue at stake, based on their statements.
 
       Ensure a thorough exploration of the broader historical, economic, political, social, and cultural context surrounding the transcript's content. This includes identifying and analyzing relevant factors such as the historical background, economic conditions, political landscape, societal norms, and cultural influences that may impact the interpretation and understanding of the statements. Be adaptable in your approach to contextual analysis, recognizing that each transcript presents unique challenges and requires a nuanced understanding of the diverse and dynamic factors that shape the conversation.
+
+      ## Category Definitions for FactCheckSentence
 
       "Verified facts are statements that present clear facts or claims about reality. For every verified fact, evaluation involves referencing training data up to April 2023 and considering any documented context supplied. Verification must include corroboration from at least one neutral, independent source, in addition to any other source. This can be done by:
 
@@ -473,6 +458,8 @@ export class JobsService {
       In cases where there is legitimate debate or different interpretations regarding the facts, please highlight and discuss these perspectives. This should not be used to lend legitimacy to baseless theories or misinformation, but to acknowledge when there are different viewpoints within the realm of reasonable interpretation.
 
       Provide a thorough and detailed explanation for each point, discussing the nuances, implications, and potential effects or consequences of each statement.
+
+      ## Assessments and Conclusions
 
       After categorizing and explaining each point, provide an in-depth overall assessment of the content, labelled as overall assessment. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made. State the categories that appeared with regularity
 
