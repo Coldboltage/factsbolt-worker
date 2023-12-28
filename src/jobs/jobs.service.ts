@@ -374,6 +374,14 @@ export class JobsService {
 
       ## Evaluate the Transcript with an Emphasis on FactCheckSentence Structure
 
+      Critically evaluate the factual correctness of each statement against established empirical evidence and scientific or medical knowledge. Do not accept statements at face value; rigorously question their veracity and align them with known facts. Every statement should be scrutinized for its alignment with scientific consensus. Statements that make broader claims, especially those relating to medical, psychological, or scientific topics, must be assessed against current understanding in these fields.
+      
+      In addition to analyzing the content, each statement should be critically evaluated for its empirical accuracy and alignment with established scientific or medical consensus. Statements that conflict with such consensus should be identified and analyzed accordingly.
+
+      Where appropriate, reinterpret or rephrase subjective or rhetorical statements to extract potential empirical claims, ensuring a more factual basis for analysis.
+
+      Maintain a balance between respecting the subjective nature of personal experiences and opinions and the objective assessment of their factual accuracy. Prioritize empirical evidence where applicable.
+      
       Sentence-by-Sentence Breakdown: Every sentence or question, marked by a full stop or a question mark, should be considered as a distinct segment, a FactCheckSentence. This means breaking down the transcript into smaller parts, each ending at a punctuation mark that concludes a sentence or a question.
 
       Segment [Number] - Speaker [Name]: [Brief Descriptor]
@@ -385,7 +393,7 @@ export class JobsService {
       Continuous Segmentation: Continue this process for each sentence or question in the transcript, ensuring that no segment contains more than one sentence or question.
 
       ### 1. Comprehensive Analysis
-   - Approach each statement in the transcript as a potential FactCheckSentence, focusing on empirical content and factual accuracy.
+   - Approach each statement in the transcript as a potential FactCheckSentence, focusing on empirical content and factual accuracy. Every statement should be scrutinized for its alignment with scientific consensus. Statements that make broader claims, especially those relating to medical, psychological, or scientific topics, must be assessed against current understanding in these fields.
 
     ### 2. Speaker Identification
       - Note the speaker for each FactCheckSentence, with emphasis on content over identity.
@@ -394,10 +402,12 @@ export class JobsService {
       - Analyze and decontextualize the text of each statement. Remove focus from the speaker's personal context and concentrate on the inherent empirical content of the statement.
 
     ### 4. Objective Categorization
-      - For the category field of FactCheckSentence, assign categories based on the objective content of the statement. Consider categories like Verified Fact, Partially Verified, etc., focusing on factual accuracy and empirical evidence.
+      - For the category field of FactCheckSentence, assign categories based on the objective content of the statement. Consider categories like Verified Fact, Partially Verified, etc., focusing on factual accuracy and empirical evidence. Reevaluate statements categorized as personal facts or grounded opinions. If they contradict the consensus significantly, categorize them as "Factually Incorrect."
+
 
     ### 5. Consensus Check and Broader Contextual Analysis
-      - Conduct a consensus check for each statement to see if it aligns with established best practices and research. Expand the assessment to include broader societal and scientific perspectives.
+      - Conduct a consensus check for each statement to see if it aligns with established best practices and research. Expand the assessment to include broader societal and scientific perspectives. Critically assess statements against the prevailing consensus, particularly those making broad claims about well-researched topics. Analyze the overall narrative constructed by sequential statements to guide the categorization process.
+
 
     ### 6. Detailed Explanation and Source Verification
       - Provide a detailed explanation for each categorization and meticulously verify sources, particularly for factual claims, within the explanation and sourceVerification fields of FactCheckSentence.
@@ -405,6 +415,8 @@ export class JobsService {
       Including such a guideline will help in categorizing information more accurately, especially in distinguishing between verified facts, unverified claims, and speculations, thereby enhancing the overall quality and reliability of the analysis.
 
       ## Extra information for FactCheckSentence
+
+      Actively reinterpret statements to challenge their empirical basis. Where a statement includes personal anecdotes or opinions, dissect these claims to identify any underlying factual assertions and assess their accuracy.
 
       Emphatic Expressions: Recognize when speakers use emphatic or strong language to underscore a sentiment. Distinguish between literal claims and expressions meant to emphasize the severity or importance of a point. Describe such expressions in a neutral tone, avoiding terms that might introduce undue doubt.
 
@@ -420,11 +432,10 @@ export class JobsService {
       Partially Verified: Statements that have some level of support from available evidence or sources but lack complete verification. These statements should be approached with a focus on what portion of the claim can be substantiated and what remains uncertain. The definition should mandate the identification of the specific elements that are verified and those that require further evidence. The potential for future verification should be acknowledged, along with a clear demarcation of the current limitations in evidence.
       Contextually Manipulated Fact: Verified facts that are twisted or presented with misleading context. Detailed analysis is required to separate the factual core from the manipulative elements. This involves a rigorous examination of the statement's phrasing, the context in which it is presented, and the potential for the altered context to change the interpretation of the fact. A comprehensive explanation of how the manipulation occurs and its potential impact on the audience's understanding is crucial.
       Unverified Claims: Claims presented as facts but lacking sufficient empirical evidence or reliable source verification. These should be clearly identified as lacking verifiable backing, with an emphasis on the nature and extent of the missing evidence. The analysis should discuss the potential implications and risks of accepting such claims without verification, and the need for critical evaluation should be stressed.
-      Factually Incorrect: Statements that are in direct contradiction with established facts, empirical evidence, or scientific consensus. This category demands stringent criteria: the statement must not only conflict with verified data but also represent a significant misunderstanding or misrepresentation of known facts. The analysis should include specific references to the established knowledge that the statement contradicts.
-      Personal Facts: Personal experiences or knowledge claims that are subjective and cannot be independently verified. The analysis should include a critical evaluation of the credibility of the claim, the potential for bias, and the implications of accepting such statements as facts. Where possible, the pursuit of corroborative evidence should be encouraged.
+      Factually Incorrect: Prioritize this category for statements that show a clear discrepancy with established scientific, medical, or empirical evidence. Statements that are in direct contradiction with established facts, empirical evidence, or scientific consensus. This category demands stringent criteria: the statement must not only conflict with verified data but also represent a significant misunderstanding or misrepresentation of known facts. The analysis should include specific references to the established knowledge that the statement contradicts. Include statements that directly contradict established scientific or medical understanding. Emphasize the need to identify and analyze claims that are at odds with well-accepted empirical evidence..
       Fundamentally Confirmed: Claims where the central idea is backed by credible sources but some details remain unverified. The focus should be on providing a clear distinction between the verified core and the unverified peripheral details. The analysis should elaborate on the extent of verification and the nature of the unverified elements, maintaining a balanced perspective on the overall veracity of the claim.
       Grounded Speculations: Predictive statements based on current trends, empirical data, or observable events. These speculations should be rooted in concrete evidence, and the analysis should explore the logical basis of the speculation, the supporting data, and its potential implications. The distinction between well-grounded speculation and baseless prediction should be clearly made.
-      Grounded Opinions: Opinions that are supported by logical reasoning and empirical evidence. The definition should require that these opinions be based on solid facts or data and that the logical coherence and empirical support for the opinion be thoroughly analyzed and presented.
+      Grounded Opinions: Use these categories cautiously, ensuring that personal anecdotes or opinions are not misconstrued as factual claims without proper verification. Opinions that are supported by logical reasoning and empirical evidence. The definition should require that these opinions be based on solid facts or data and that the logical coherence and empirical support for the opinion be thoroughly analyzed and presented. Ensure these categories differentiate personal experiences or opinions from universally applicable empirical facts.
       Baseless Speculation and Baseless Opinions: Speculations or opinions that lack any empirical or logical foundation. These categories should be defined stringently, reserving them for claims that are completely devoid of credible evidence or rational basis. The analysis should focus on highlighting the absence of support and the potential for misinformation or misinterpretation.
       Manipulative Opinion and Manipulative Speculation: Opinions or speculations that are designed to deceive, mislead, or manipulate the audience, irrespective of any factual basis. These categories should demand an analysis of the intent behind the statement, the techniques used for manipulation, and the impact of such manipulation on the audience's perception and understanding.
       Questions and Manipulative Questions: Questions should be categorized based on their intent and content. Genuine inquiries should be distinguished from those framed to mislead or manipulate. The analysis should delve into the underlying purpose of the question and its potential impact on the discussion.
@@ -514,7 +525,6 @@ export class JobsService {
         VerifiedFact = "Verified Fact",
         ContextuallyManipulatedFact = "Contextually Manipulated Fact",
         UnverifiedClaims = "Unverified Claims",
-        PersonalFact = "Personal Fact",
         GroundedSpeculation = "Grounded Speculation",
         ManipulativeSpeculation = "Manipulative Speculation",
         BaselessSpeculation = "Baseless Speculation",
@@ -555,7 +565,10 @@ export class JobsService {
       Follow the output example: ${example[0].output}
       Here's another example: ${example[1].output}
 
-      ⚠️ Critical Reminder: In your analysis, strictly adhere to segmenting the transcript into individual FactCheckSentence instances. Each sentence or closely related group of sentences must be analyzed and reported as a separate FactCheckSentence. This segmentation is essential for a detailed and accurate evaluation. Do not analyze or report the transcript as a single, continuous text.
+      Consistent Rigor in Analysis
+"Maintain a consistent level of rigor throughout the analysis. Every statement, regardless of its source, should be subjected to the same stringent criteria of empirical verification and alignment with established knowledge. This consistent approach is vital in ensuring the reliability and accuracy of the analysis, especially when dealing with statements that intertwine personal experiences with broader claims."
+
+      ⚠️ Critical Reminder: In your analysis, strictly adhere to segmenting the transcript into individual FactCheckSentence instances. Each sentence or closely related group of sentences must be analyzed and reported as a separate FactCheckSentence. This segmentation is essential for a detailed and accurate evaluation. Do not analyze or report the transcript as a single, continuous text. Maintain a consistent level of rigor throughout the analysis. Every statement, regardless of its source, should be subjected to the same stringent criteria of empirical verification and alignment with established knowledge.
       `,
     });
 
