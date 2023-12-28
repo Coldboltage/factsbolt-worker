@@ -324,7 +324,7 @@ export class JobsService {
     const vectorStoreRetriever = new HydeRetriever({
       vectorStore,
       llm,
-      k: 38,
+      k: 4,
       verbose: true,
     });
 
