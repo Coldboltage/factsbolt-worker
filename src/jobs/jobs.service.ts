@@ -24,7 +24,8 @@ const { dlAudio } = require('youtube-exec');
 const youtubedl = require('youtube-dl-exec');
 const { Configuration, OpenAIApi } = require('openai');
 const stripchar = require('stripchar').StripChar;
-import { OpenAI, PromptTemplate } from 'langchain';
+import { OpenAI } from 'langchain/llms/openai';
+import { PromptTemplate } from 'langchain/prompts';
 
 import { loadQAStuffChain } from 'langchain/chains';
 import {
@@ -274,18 +275,21 @@ export class JobsService {
     //   ? await this.transcriptSearchGen(transcriptionJob, title)
     //   : await this.generalTextSearchGen(text, title);
 
-    const searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
-
+    let searchTerm;
     let searchResultFilter = [];
 
-    for (const term of searchTerm) {
-      let searchResults = await this.utilsService.searchTerm(term);
-      const currentSearchResultFilter =
-        this.utilsService.extractURLs(searchResults);
-      searchResultFilter = [
-        ...searchResultFilter,
-        ...currentSearchResultFilter,
-      ];
+    if (process.env.SEARCH_GOOGLE === 'true') {
+      searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
+
+      for (const term of searchTerm) {
+        let searchResults = await this.utilsService.searchTerm(term);
+        const currentSearchResultFilter =
+          this.utilsService.extractURLs(searchResults);
+        searchResultFilter = [
+          ...searchResultFilter,
+          ...currentSearchResultFilter,
+        ];
+      }
     }
 
     // let searchResultFilter = this.utilsService.extractURLs(searchResults);
@@ -307,18 +311,20 @@ export class JobsService {
       metadataKeys: ['source'],
     });
 
-    await this.utilsService.webBrowserDocumentProcess(
-      [
-        ...searchResultFilter,
-        // ...searchResultFilterReuters
-      ],
-      vectorStore,
-    );
+    if (process.env.SEARCH_GOOGLE === 'true') {
+      await this.utilsService.webBrowserDocumentProcess(
+        [
+          ...searchResultFilter,
+          // ...searchResultFilterReuters
+        ],
+        vectorStore,
+      );
+    }
 
     const vectorStoreRetriever = new HydeRetriever({
       vectorStore,
       llm,
-      k: 40,
+      k: 38,
       verbose: true,
     });
 
@@ -354,15 +360,54 @@ export class JobsService {
 
     const fullResults = [...results];
 
+    const example = this.utilsService.promptExample();
+
+    // const breakdownStatements = this.utilsService.breakdownTranscript(transcriptionJob.utterance)
+
     const result = await chain.call({
       input_documents: fullResults,
       verbose: true,
       question: `
-      Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. Begin by providing a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
+      Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. 
+            
+      Labelled Context Summary, create a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
       
-      Carefully dissect the transcript into distinct contextual sections, each focusing on a separate point or topic, while ensuring that each section is aware of and relates coherently to every other section, to allow for precise and targeted fact-checking of each segment independently as well as in the context of the entire transcript.
-      
-      Break down these statements into individual points or closely related sentences to understand the nuances, but regularly refer back to the broader conversation to ensure that each point is evaluated within its proper context. This approach aims to provide a thorough dissection of each statement while preserving the interconnectedness and flow of the conversation. By doing this, the evaluation will be more balanced, acknowledging both the specific details of individual statements and their meaning within the larger dialogue. For each point, identify it as either a Verified Fact, Provisionally Unverified, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Question, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization.
+      In your analysis, it's crucial to treat each sentence or question in the transcript as a separate segment for evaluation. Follow these guidelines:
+
+      Sentence-by-Sentence Breakdown: Every sentence or question, marked by a full stop or a question mark, should be considered as a distinct segment. This means breaking down the transcript into smaller parts, each ending at a punctuation mark that concludes a sentence or a question.
+
+      Individual Analysis of Segments: Apply the FactCheckSentence structure to each of these segments. This involves:
+
+      Speaker: Identify the speaker for the segment.
+      Text: Include the exact text of the sentence or question.
+      Category: Assign an appropriate category from the Category enumeration.
+      Explanation: Provide a detailed explanation for the categorization.
+      Source Verification: Detail the source verification, particularly for factual claims.
+      Explicit Segmentation in Output: Clearly indicate the segmentation in the output. Use a distinct header for each segment, followed by the structured analysis:
+
+      Segment [Number] - Speaker [Name]: [Brief Descriptor]
+      Speaker: [Name]
+      Text: "[Exact quote]"
+      Category: [Chosen category]
+      Explanation: [Reason for categorization]
+      Source Verification: [Verification details]
+      Continuous Segmentation: Continue this process for each sentence or question in the transcript, ensuring that no segment contains more than one sentence or question.
+
+      For example:
+
+      Segment 1 - Speaker A: Concept of Galactic Meaning
+
+      Speaker: Speaker A
+      Text: "Let's imagine that in our galaxy, 400 billion suns..."
+      Category: [Category]
+      Explanation: [Explanation]
+      Source Verification: [Verification]
+      Segment 2 - Speaker A: Perceiving Beauty
+
+      [Repeat the structure for the next sentence]
+      By following this structured approach, ensure that each sentence or question is analyzed as an individual unit, maintaining clarity and focus in the evaluation of each segment.
+
+      Break down these statements into individual points or closely related sentences to understand the nuances, but regularly refer back to the broader conversation to ensure that each point is evaluated within its proper context. This approach aims to provide a thorough dissection of each statement while preserving the interconnectedness and flow of the conversation. By doing this, the evaluation will be more balanced, acknowledging both the specific details of individual statements and their meaning within the larger dialogue. For each point, identify it as either a Verified Fact, Partially  Verified, Personal Fact, Grounded Speculation, Grounded Opinion, Baseless Speculation, Baseless Opinion, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Factually Incorrect, Question, or Incomplete Statement, Manipulative Question. Consider the context in which the statement is made to ensure accurate categorization. In addition to contextual analysis, please ensure to assess the factual accuracy of each statement, taking into account established scientific knowledge and empirical evidence when applicable.
 
       When evaluating each statement within the provided documents/context, conduct a meticulous assessment of each source's credibility. This evaluation should include an in-depth examination of the author's expertise and qualifications, the source's history of accuracy and reliability, any potential biases or agendas, and the timeliness and relevance of the information presented. Cross-reference facts with multiple reputable sources, prioritizing primary sources and recognized authorities in the field. In cases of conflicting information, seek additional corroborative sources to discern the most robustly supported viewpoint. Document each step of this evaluation process, providing explicit justifications for the credibility assigned to each source. Regularly update and review source credibility, especially for ongoing analyses, to ensure the most current and accurate information is being utilized. This rigorous approach to source evaluation is crucial to ensure that the analysis is grounded not only in factual accuracy but also in the reliability and integrity of the information's origin.
 
@@ -387,10 +432,15 @@ export class JobsService {
 
       Partially  Verified: Statements or claims categorized as "Partially  Verified" are those where the available evidence or sources are insufficient for full verification but also do not warrant outright dismissal. This category recognizes the potential validity of the information while acknowledging that it requires further evidence or corroboration.
 
-      Contextually Manipulated Facts: Identify statements that present facts or claims verified through your training data up to April 2023, documented context, or credible public sources, but are potentially misleading or taken out of context. Label these as 'Contextually Manipulated Fact.' Confirm the factual accuracy of the statement and provide a detailed analysis of the context in which it is presented. Discuss what additional information is necessary for a full understanding and if the source or presentation contributes to a misleading or manipulative narrative. Evaluate the potential utility and harm of these manipulated facts, discussing how they could be used or misused in different scenarios. Include any counterpoints or alternative perspectives that could add valuable context to the fact in question, noting if these counterpoints are supported by your training data or other credible sources.
+      Contextually Manipulated Fact: This category is for identifying statements that, while based on verified facts or claims up to April 2023 from credible sources, include elements that could be misleading or taken out of context. When labeling a statement as a 'Contextually Manipulated Fact,' it is crucial to first affirm the overall factual accuracy of the core claim, using training data, documented context, or credible public sources. The analysis should then focus on identifying and explaining specific aspects of the statement that are potentially misleading or misrepresented. This involves discussing which particular elements or phrasings in the statement contribute to a misleading narrative and why they are considered manipulative in the given context. Additionally, it is important to clarify what additional information or perspective is necessary to fully understand these elements and to rectify any misconceptions. The evaluation should also consider the potential utility and harm of these manipulated elements, discussing how they could influence interpretations or decisions in various scenarios. It is equally important to include counterpoints or alternative perspectives that add valuable context to the specific manipulated elements of the fact, especially those supported by training data or other credible sources. The goal is to guide the audience towards an informed understanding by distinguishing between the verified core of the claim and the contextually manipulated aspects of its presentation.
 
       Unverified Claims: Identify statements presented as facts or claims about reality that currently lack verifiable evidence or reliable sources for substantiation. Label these as 'Unverified Claim.' In your analysis, explain why the statement remains unverified, highlighting the limitations of the available resources or search capabilities that might have led to this conclusion. Note that while the claim remains unverified at the moment, it does not necessarily mean it is false — further research or future information could potentially verify it. Discuss the potential implications of the claim, including how it might be used or misused in different contexts if accepted without verification, and encourage the audience to consider the claim with a critical perspective, acknowledging the current limitations in verifying its accuracy.
-      Personal facts: Note any statements that are based on personal experience or knowledge and are true for the individual, but can't be independently verified by others. Discuss the potential utility of this personal fact, including how it may influence understanding or perspective.
+
+      Factually Incorrect: This category applies to statements, claims, opinions, or speculations that either directly contradict current, well-established knowledge and empirical evidence, or represent a significant misunderstanding or misrepresentation of such knowledge. This includes not only statements that are demonstrably false but also those that, while possibly grounded in personal experience or belief, are at odds with established scientific consensus or factual understanding. The key aspect of this category is the presence of a clear conflict between the statement and established facts or scientific understanding, regardless of whether the statement is framed as a personal belief or experience.
+      
+      Personal Facts: Identify statements that are presented as personal facts based on an individual's experience or knowledge but cannot be independently verified by others. Exercise caution when categorizing statements as personal facts, as they may be subject to falsehood or manipulation. In your analysis, discuss the potential utility of the statement and how it may influence understanding or perspective, while remaining vigilant about the possibility of deception or manipulation. Consider requesting evidence or corroboration if available to assess the accuracy of the statement.
+
+      Fundamentally Confirmed: This categorization applies to statements where the core idea or principal assertion is validated through credible and independent sources, as per the latest known data, including training data up to April 2023. The term 'Fundamentally Confirmed' specifically highlights that the foundational aspect of the claim is verified and factual. However, it simultaneously brings attention to the fact that certain details, specific methods, or subsidiary elements within the claim have not been verified or may remain inconclusive. This classification is designed to explicitly differentiate between the aspects of the claim that are substantiated and those that are not, thereby providing a clear understanding of the extent of verification. The aim is to affirm the verified truth of the central claim while maintaining transparency about the unverified status of specific details, ensuring an informed and nuanced understanding of the claim's overall veracity.
 
       Grounded Speculations: Label a statement as grounded speculation if it makes a prediction or guess about the future based on current trends or data. Discuss the current trends, data, or historical events that support this speculation. Evaluate the potential utility or impact if this speculation was acted upon.
 
@@ -405,6 +455,10 @@ export class JobsService {
       Manipulative Speculation: Identify statements that make predictions or guesses, whether based on current trends, data, or without any clear basis, but are presented in a misleading or deceptive manner. Label these as 'Manipulative Speculation'. Discuss any trends, data, or historical events that may or may not support this speculation, and elaborate on how the statement is being used to deceive or mislead.
 
       Questions: These are inquiries or requests for information, often seeking clarification or further details on a particular topic. Discuss the utility of these questions in providing greater clarity or understanding.
+
+      Manipulative Question: Identify questions that are presented in a way that aims to deceive, mislead, or provoke strong emotional responses. These questions may use emotionally charged language, exaggerations, or rhetorical devices designed to manipulate the audience's perception. Provide an analysis that discusses the manipulative aspects of the question, including the underlying evidence or reasoning, if any, and how it is being used manipulatively.
+
+      Incomplete Statement: Identify statements that lack essential information or context to convey a clear meaning on their own. These statements may require additional information or elaboration to be fully understood. Use this category when a statement is presented in a way that is fragmented, vague, or lacking crucial details, making it challenging to categorize it otherwise.
 
       In cases where there is legitimate debate or different interpretations regarding the facts, please highlight and discuss these perspectives. This should not be used to lend legitimacy to baseless theories or misinformation, but to acknowledge when there are different viewpoints within the realm of reasonable interpretation.
 
@@ -466,6 +520,12 @@ export class JobsService {
 
       I've made these interfaces to help assist in the Output structure.
 
+      interface MainClaim {
+        mainClaim: string;
+        category: Category;
+        explanation: string;
+      }
+
       interface FactCheckSentence {
         speaker: string;
         text: string;
@@ -476,8 +536,6 @@ export class JobsService {
       }
 
       enum Category {
-        Question = "Question",
-        IncompleteStatement = "Incomplete Statement",
         GroundedOpinion = "Grounded Opinion",
         ManipulativeOpinion = "Manipulative Opinion"
         BaselessOpinion = "Baseless Opinion",
@@ -488,7 +546,12 @@ export class JobsService {
         GroundedSpeculation = "Grounded Speculation",
         ManipulativeSpeculation = "Manipulative Speculation",
         BaselessSpeculation = "Baseless Speculation",
-        Partially Verified = "Partially  Verified"
+        PartiallyVerified = "Partially  Verified",
+        FundamentallyConfirmed = "Fundamentally Confirmed",
+        FactuallyIncorrect = "Factually Incorrect,
+        Question = "Question",
+        IncompleteStatement = "Incomplete Statement",
+        ManipulativeQuestion = "Manipulative Question"
       }
 
 
@@ -515,7 +578,12 @@ export class JobsService {
 
       Note, I have done many of fact checking analysis jobs with gpt4 with no issues, therefore there should be no reason why you can't do this. All the information you need will be provided in the documents/context.
 
-      Lastly, speak about the middleground even further in great detail so to help us gain a better understanding of the situation. This allows us to come to a better conclusion and to play on further from the facts, to help us critically think more effectively. 
+      Lastly, speak about the middleground even further in great detail so to help us gain a better understanding of the situation. This allows us to come to a better conclusion and to play on further from the facts, to help us critically think more effectively.
+
+      Follow the output example: ${example[0].output}
+      Here's another example: ${example[1].output}
+
+      ⚠️ Critical Reminder: In your analysis, strictly adhere to segmenting the transcript into individual FactCheckSentence instances. Each sentence or closely related group of sentences must be analyzed and reported as a separate FactCheckSentence. This segmentation is essential for a detailed and accurate evaluation. Do not analyze or report the transcript as a single, continuous text.
       `,
     });
 
@@ -585,7 +653,6 @@ export class JobsService {
     //   completedVideoJob.video.name,
     //   transcriptionJob.utterance,
     // );
-
     const completeFactsJob = await this.factCheckLang({
       title: completedVideoJob.video.name,
       transcriptionJob: transcriptionJob,
@@ -704,6 +771,40 @@ export class JobsService {
 
     console.log(parsed);
 
+    const parserMainClaim = StructuredOutputParser.fromNamesAndDescriptions({
+      query: 'extract the query',
+    });
+
+    const formatInstructionsMainClaim = parserMainClaim.getFormatInstructions();
+
+    const promptMainClaim = new PromptTemplate({
+      template: `
+      Succinctly state the main claim within a 16-word limit, capturing its essence as supported by the provided transcript/text and any relevant documents/context
+      
+      {format_instructions} {title} {transcription}`,
+      inputVariables: ['transcription', 'title'],
+      partialVariables: { format_instructions: formatInstructionsMainClaim },
+    });
+
+    const inputMainClaim = await promptMainClaim.format({
+      transcription: transcriptionJob.text,
+      title,
+    });
+
+    // const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    const modelMainClaim = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4-1106-preview',
+    });
+
+    // const model = new OpenAI({ temperature: 0 });
+
+    const responseMainClaim = await modelMainClaim.call(inputMainClaim);
+
+    const parsedMainClaim = await parserMainClaim.parse(responseMainClaim);
+
+    console.log(parsedMainClaim);
+
     // List test
     // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
     const parserList = new CommaSeparatedListOutputParser();
@@ -727,23 +828,6 @@ export class JobsService {
       parserList,
     ]);
 
-    // const chain = RunnableSequence.from([
-    //   PromptTemplate.fromTemplate(`Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Focus on extracting these core elements from the transcription, concentrating on the specifics of the situation rather than the speaker's broader perspective or the general context of the discussion.
-
-    //   Construct search queries that specifically target these identified subjects and claims. Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects.
-
-    //   When formulating your queries, ensure they are precise and succinct, ideally limited to 32 words. Avoid the use of special characters like question marks, periods, or any non-alphanumeric symbols. The goal is to create queries that delve directly into the specifics of the situation, such as individual statements, legal proceedings, organizational responses, and media coverage.
-
-    //   Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. This approach ensures a thorough exploration of each significant aspect of the event or issue.
-
-    //   {format_instructions} {title} {transcription}`),
-    //   new OpenAI({
-    //     temperature: 0,
-    //     modelName: 'gpt-4-1106-preview',
-    //   }),
-    //   parserList,
-    // ]);
-
     const responseList = await chain.invoke({
       transcription: transcriptionJob.text,
       title,
@@ -751,6 +835,7 @@ export class JobsService {
     });
 
     responseList.push(parsed.query);
+    responseList.push(parsedMainClaim.query);
     console.log(Array.from(new Set(responseList)));
     console.log(responseList.length);
     return Array.from(new Set(responseList));
