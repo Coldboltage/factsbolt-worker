@@ -369,8 +369,6 @@ export class JobsService {
       verbose: true,
       question: `
       Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. 
-
-      Labelled TL:DR, Identify the central claim within the text in 15 words based on the transcript/text. Afterwards, categorize the claim using the transcript/text and context/documents, based on how it aligns with established scientific knowledge and empirical evidence, without any predetermined bias towards a specific category. Lastly, explain the choice in category
             
       Labelled Context Summary, create a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
       

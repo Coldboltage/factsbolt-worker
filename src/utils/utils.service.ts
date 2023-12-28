@@ -481,12 +481,6 @@ export class UtilsService {
           `We've tracked psychological epidemics going back 300 years. Here's some of them. Multiple personality disorder. It cycles in society, disappears. Then there's one case, then it spreads like mad. Then there's multiple personality disorder everywhere. Then people get skeptical about it and it dies. And maybe it disappears for a whole generation or two. Then a case pops up, just does this. That's happened for 300 years. Cutting was a psychological epidemic. Bulimia was a psychological epidemic. Anorex was a psychological epidemic. And the rule, basically, is that if you confuse people about a fundamental element of their identity, then those who are already so confused they're barely hanging on are going to fall prey to that and all hell's going to break loose.`,
         ),
         output: JSON.stringify(`
-        Main Claim: "Psychological epidemics linked to identity confusion."
-
-        Category: Grounded Opinion
-
-        Explanation: This claim combines verified historical facts about the occurrence of psychological conditions with the opinion that identity confusion is a significant contributing factor. It reflects an interpretation of psychological phenomena where fluctuations in the prevalence and diagnosis of certain disorders are viewed through the lens of identity confusion impacting vulnerable individuals. The use of "epidemics" to describe these phenomena indicates a perspective that sees these conditions as widespread and socially influenced, although this characterization is somewhat contentious and not universally accepted in the field.
-        
         Context Summary:
         Speaker A discusses the historical occurrence of psychological epidemics over the past 300 years, listing multiple personality disorder, cutting, bulimia, and anorexia as examples. The speaker suggests that confusion about fundamental elements of identity can lead to these epidemics, particularly affecting those who are already vulnerable.
         
@@ -532,6 +526,10 @@ export class UtilsService {
         
         Middle Ground Conclusion:
         A balanced perspective acknowledges that psychological conditions can indeed have periods of increased attention and diagnosis, which may be influenced by cultural, societal, and medical factors. It is also important to recognize that identity plays a significant role in mental health, but it is not the sole factor. Ongoing challenges in accurately diagnosing and understanding these conditions persist, and a comprehensive approach that includes biological, psychological, and social considerations is necessary for progress.
+
+        Main Claim:
+        Category:
+        Explanation:
         
         Further Resources:
         
@@ -545,12 +543,6 @@ export class UtilsService {
           `The thing that worries me the most about the United States in general is when otherwise free people become convinced that the primary way to adjudicate problems is through government action. The moment you've decided I don't go to my neighbor and solve this on our own, or the moment you've decided that we don't settle this within the marketplace, that is by getting a law passed at the expense of somebody else for my benefit, and we use. The moment that becomes the norm within a society, you will abandon freedom for control of power. Because if that becomes the primary way that we solve our differences, then we will fight horribly and mercilessly against people that we used to care about in order to control that mechanism.`,
         ),
         output: `
-        Main Claim: Concern about over-reliance on government intervention in problem-solving.
-
-        Category: Grounded Opinion
-
-        Explanation: The main claim, categorized as a Grounded Opinion, expresses the speaker's apprehension that people in the United States are increasingly looking towards government action as the primary means to resolve issues. This reflects a subjective viewpoint, shaped by the speaker's understanding of freedom and governance. It's based on the libertarian belief in minimal government intervention in personal and economic matters, highlighting a perspective that values individual or market-based solutions over governmental ones. The claim suggests that this reliance on government might undermine individual freedoms and lead to societal conflicts.
-
         Speaker A:
         Text: "The thing that worries me the most about the United States in general is when otherwise free people become convinced that the primary way to adjudicate problems is through government action."
         Category: Grounded Opinion
@@ -601,6 +593,10 @@ export class UtilsService {
         
         Middle Ground Conclusion:
         The middle ground in this debate recognizes the complexities of governance and the need to balance individual freedoms with collective action for the common good. While the speakers advocate for minimal government intervention, a balanced view would also consider the role of government in providing public goods, ensuring justice, and addressing issues that cannot be effectively managed by individuals or the market alone.
+
+        Main Claim:
+        Category:
+        Explanation:
         
         Further Resources:
         
@@ -612,6 +608,18 @@ export class UtilsService {
       },
     ];
   }
+
+  // Main Claim: "Psychological epidemics linked to identity confusion."
+
+  //       Category: Grounded Opinion
+
+  //       Explanation: This claim combines verified historical facts about the occurrence of psychological conditions with the opinion that identity confusion is a significant contributing factor. It reflects an interpretation of psychological phenomena where fluctuations in the prevalence and diagnosis of certain disorders are viewed through the lens of identity confusion impacting vulnerable individuals. The use of "epidemics" to describe these phenomena indicates a perspective that sees these conditions as widespread and socially influenced, although this characterization is somewhat contentious and not universally accepted in the field.
+
+  // 2 )Main Claim: Concern about over-reliance on government intervention in problem-solving.
+
+  // Category: Grounded Opinion
+
+  // Explanation: The main claim, categorized as a Grounded Opinion, expresses the speaker's apprehension that people in the United States are increasingly looking towards government action as the primary means to resolve issues. This reflects a subjective viewpoint, shaped by the speaker's understanding of freedom and governance. It's based on the libertarian belief in minimal government intervention in personal and economic matters, highlighting a perspective that values individual or market-based solutions over governmental ones. The claim suggests that this reliance on government might undermine individual freedoms and lead to societal conflicts.
 
   async breakdownTranscript(transcript: AmendedSpeech[]) {
     const parser = new CommaSeparatedListOutputParser();
