@@ -369,19 +369,19 @@ export class JobsService {
       verbose: true,
       question: `
       Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. 
-            
+
       Labelled Context Summary, create a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
 
       ## Evaluate the Transcript with an Emphasis on FactCheckSentence Structure
 
       Critically evaluate the factual correctness of each statement against established empirical evidence and scientific or medical knowledge. Do not accept statements at face value; rigorously question their veracity and align them with known facts. Every statement should be scrutinized for its alignment with scientific consensus. Statements that make broader claims, especially those relating to medical, psychological, or scientific topics, must be assessed against current understanding in these fields.
-      
+
       In addition to analyzing the content, each statement should be critically evaluated for its empirical accuracy and alignment with established scientific or medical consensus. Statements that conflict with such consensus should be identified and analyzed accordingly.
 
       Where appropriate, reinterpret or rephrase subjective or rhetorical statements to extract potential empirical claims, ensuring a more factual basis for analysis.
 
       Maintain a balance between respecting the subjective nature of personal experiences and opinions and the objective assessment of their factual accuracy. Prioritize empirical evidence where applicable.
-      
+
       Sentence-by-Sentence Breakdown: Every sentence or question, marked by a full stop or a question mark, should be considered as a distinct segment, a FactCheckSentence. This means breaking down the transcript into smaller parts, each ending at a punctuation mark that concludes a sentence or a question.
 
       Segment [Number] - Speaker [Name]: [Brief Descriptor]
@@ -393,23 +393,23 @@ export class JobsService {
       Continuous Segmentation: Continue this process for each sentence or question in the transcript, ensuring that no segment contains more than one sentence or question.
 
       ### 1. Comprehensive Analysis
-   - Approach each statement in the transcript as a potential FactCheckSentence, focusing on empirical content and factual accuracy. Every statement should be scrutinized for its alignment with scientific consensus. Statements that make broader claims, especially those relating to medical, psychological, or scientific topics, must be assessed against current understanding in these fields.
+      - Approach each statement in the transcript as a potential FactCheckSentence, focusing on empirical content and factual accuracy. Every statement should be scrutinized for its alignment with scientific consensus. Statements that make broader claims, especially those relating to medical, psychological, or scientific topics, must be assessed against current understanding in these fields.
 
-    ### 2. Speaker Identification
+      ### 2. Speaker Identification
       - Note the speaker for each FactCheckSentence, with emphasis on content over identity.
 
-    ### 3. Text Analysis and Decontextualization
+      ### 3. Text Analysis and Decontextualization
       - Analyze and decontextualize the text of each statement. Remove focus from the speaker's personal context and concentrate on the inherent empirical content of the statement.
 
-    ### 4. Objective Categorization
-      - For the category field of FactCheckSentence, assign categories based on the objective content of the statement. Consider categories like Verified Fact, Partially Verified, etc., focusing on factual accuracy and empirical evidence. Reevaluate statements categorized as personal facts or grounded opinions. If they contradict the consensus significantly, categorize them as "Factually Incorrect."
+      ### 4. Objective Categorization
+      - For the category field of FactCheckSentence, assign categories based on the objective content of the statement. Consider categories like Verified Fact, Partially Verified, etc., focusing on factual accuracy and empirical evidence. Reevaluate statements categorized as grounded opinions. If they contradict the consensus significantly, categorize them as "Factually Incorrect."
 
 
-    ### 5. Consensus Check and Broader Contextual Analysis
+      ### 5. Consensus Check and Broader Contextual Analysis
       - Conduct a consensus check for each statement to see if it aligns with established best practices and research. Expand the assessment to include broader societal and scientific perspectives. Critically assess statements against the prevailing consensus, particularly those making broad claims about well-researched topics. Analyze the overall narrative constructed by sequential statements to guide the categorization process.
 
 
-    ### 6. Detailed Explanation and Source Verification
+      ### 6. Detailed Explanation and Source Verification
       - Provide a detailed explanation for each categorization and meticulously verify sources, particularly for factual claims, within the explanation and sourceVerification fields of FactCheckSentence.
 
       Including such a guideline will help in categorizing information more accurately, especially in distinguishing between verified facts, unverified claims, and speculations, thereby enhancing the overall quality and reliability of the analysis.
@@ -428,7 +428,7 @@ export class JobsService {
 
       ## Category Definitions for FactCheckSentence
 
-            Verified Facts: Statements that are unequivocally supported by empirical data, rigorous research, or verifiable evidence. Each fact must be corroborated by at least one independent, neutral source and other credible sources. The verification process should involve a detailed comparison with established knowledge and documented facts. The source of verification, along with a clear explanation of the alignment with recognized facts, should be explicitly provided. In cases where a fact is part of a broader narrative, the context should be analyzed to ensure unbiased interpretation.
+      Verified Facts: Statements that are unequivocally supported by empirical data, rigorous research, or verifiable evidence. Each fact must be corroborated by at least one independent, neutral source and other credible sources. The verification process should involve a detailed comparison with established knowledge and documented facts. The source of verification, along with a clear explanation of the alignment with recognized facts, should be explicitly provided. In cases where a fact is part of a broader narrative, the context should be analyzed to ensure unbiased interpretation.
       Partially Verified: Statements that have some level of support from available evidence or sources but lack complete verification. These statements should be approached with a focus on what portion of the claim can be substantiated and what remains uncertain. The definition should mandate the identification of the specific elements that are verified and those that require further evidence. The potential for future verification should be acknowledged, along with a clear demarcation of the current limitations in evidence.
       Contextually Manipulated Fact: Verified facts that are twisted or presented with misleading context. Detailed analysis is required to separate the factual core from the manipulative elements. This involves a rigorous examination of the statement's phrasing, the context in which it is presented, and the potential for the altered context to change the interpretation of the fact. A comprehensive explanation of how the manipulation occurs and its potential impact on the audience's understanding is crucial.
       Unverified Claims: Claims presented as facts but lacking sufficient empirical evidence or reliable source verification. These should be clearly identified as lacking verifiable backing, with an emphasis on the nature and extent of the missing evidence. The analysis should discuss the potential implications and risks of accepting such claims without verification, and the need for critical evaluation should be stressed.
@@ -441,17 +441,17 @@ export class JobsService {
       Questions and Manipulative Questions: Questions should be categorized based on their intent and content. Genuine inquiries should be distinguished from those framed to mislead or manipulate. The analysis should delve into the underlying purpose of the question and its potential impact on the discussion.
       Incomplete Statement: Statements that are ambiguous or lack necessary context for a clear understanding. The definition should require a thorough analysis of what information is missing, how this affects the interpretation of the statement, and the potential implications of this lack of clarity.
 
-            In cases where there is legitimate debate or different interpretations regarding the facts, please highlight and discuss these perspectives. This should not be used to lend legitimacy to baseless theories or misinformation, but to acknowledge when there are different viewpoints within the realm of reasonable interpretation.
+      In cases where there is legitimate debate or different interpretations regarding the facts, please highlight and discuss these perspectives. This should not be used to lend legitimacy to baseless theories or misinformation, but to acknowledge when there are different viewpoints within the realm of reasonable interpretation.
 
-            Provide a thorough and detailed explanation for each point, discussing the nuances, implications, and potential effects or consequences of each statement.
+      Provide a thorough and detailed explanation for each point, discussing the nuances, implications, and potential effects or consequences of each statement.
 
-            ## Assessments and Conclusions
+      ## Assessments and Conclusions
 
-            After categorizing and explaining each point, provide an in-depth overall assessment of the content, labelled as overall assessment. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made. State the categories that appeared with regularity
+      After categorizing and explaining each point, provide an in-depth overall assessment of the content, labelled as overall assessment. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made. State the categories that appeared with regularity
 
-            Afterwards, we'll do a Consensus Check, labelled as Consensus Check. Start by immediately stating if the views or information presented align or do not align with recognized best practices, consensus, or research in the field. After this initial alignment statement, delve into the specifics. Evaluate the content to determine how closely it matches the prevailing consensus, recognized best practices, the most robust evidence available, and the latest, most accepted research. Summarize the primary sentiments or messages of the content. If these views are in accordance with well-established norms or knowledge, detail the reasons for this alignment. Conversely, if there are discrepancies, specify the reasons for non-alignment. Additionally, critically examine any strategies, advice, or opinions shared and assess how they compare with the consensus of leading experts, authoritative bodies, or reputable scientific research.
+      Afterwards, we'll do a Consensus Check, labelled as Consensus Check. Start by immediately stating if the views or information presented align or do not align with recognized best practices, consensus, or research in the field. After this initial alignment statement, delve into the specifics. Evaluate the content to determine how closely it matches the prevailing consensus, recognized best practices, the most robust evidence available, and the latest, most accepted research. Summarize the primary sentiments or messages of the content. If these views are in accordance with well-established norms or knowledge, detail the reasons for this alignment. Conversely, if there are discrepancies, specify the reasons for non-alignment. Additionally, critically examine any strategies, advice, or opinions shared and assess how they compare with the consensus of leading experts, authoritative bodies, or reputable scientific research.
 
-            Assess not just whether these strategies, advice, or opinions are widely accepted or popular, but also whether they align with the prevailing consensus among experts in the field.
+      Assess not just whether these strategies, advice, or opinions are widely accepted or popular, but also whether they align with the prevailing consensus among experts in the field.
 
       Additionally, ensure to differentiate between views held by the majority and those held by a minority that may seem to be growing in influence. It's important not to incorrectly attribute a minority viewpoint as a majority consensus if a significantly larger consensus exists on a particular topic.
 
@@ -471,19 +471,19 @@ export class JobsService {
 
       Balanced Understanding of Complexities:
       Begin by thoroughly unpacking the complexities of the issue at hand. This involves providing a comprehensive explanation of the various factors, circumstances, and nuances contributing to the problem. Consider economic, social, political, and environmental elements as well as historical and systemic factors. Your analysis should address questions like: "Why is this issue so complex? What are the multiple factors influencing it?"
-      
+
       Recognition of Specific Efforts and Progress:
       Identify and describe the specific efforts, policies, initiatives, or actions that have been undertaken to address the issue. Evaluate the effectiveness of these efforts by detailing the progress achieved in specific areas. Explore the question: "What specific actions have been taken to tackle the problem, and where has progress been made?"
-      
+
       Acknowledgment of Ongoing Challenges and Unmet Needs:
       Highlight the persistent challenges and limitations of current approaches. Examine why these challenges continue to exist and what critical needs remain unmet. Delve into questions like: "What are the ongoing challenges, and why do they persist? What needs are yet to be fully addressed?"
-      
+
       Synthesize into a Coherent Middle-Ground View:
       Based on your detailed exploration of complexities, efforts, and challenges, craft a middle-ground conclusion. This conclusion should synthesize the gathered information into a coherent viewpoint that acknowledges the multifaceted nature of the issue. Explain why this balanced view is considered the middle ground, considering the various perspectives and data presented.
-      
+
       Emphasize the Rationale for Middle-Ground Thinking:
       Emphasize the importance of middle-ground thinking in understanding and addressing complex issues. Explain that this approach is crucial for acknowledging the validity of different perspectives, appreciating the intricacies of real-world challenges, and fostering pragmatic, inclusive solutions.
-      
+
       A middle-ground conclusion aims to provide a balanced and comprehensive perspective on the issue, taking into account its complexities and recognizing both successes and challenges in addressing it.
 
       Note: In all sections labeled as 'Assessment,' 'Conclusion,' or any variations thereof—both present and those that may be added in the future—please provide a highly detailed and verbose response. These designated sections are intended to yield a comprehensive and nuanced understanding of the topic. Conciseness is acceptable for other sections not falling under these categories.
@@ -495,8 +495,8 @@ export class JobsService {
       Please note that the transcript is an array of speeches from speakers using this format:
 
       export interface AmendedSpeech {
-        speaker: string;
-        text: string;
+      speaker: string;
+      text: string;
       }
 
       You will be given an array after the transcription which will have the type of AmendedSpeech or more.
@@ -504,49 +504,49 @@ export class JobsService {
       I've made these interfaces to help assist in the Output structure.
 
       interface MainClaim {
-        mainClaim: string;
-        category: Category;
-        explanation: string;
+      mainClaim: string;
+      category: Category;
+      explanation: string;
       }
 
       interface FactCheckSentence {
-        speaker: string;
-        text: string;
-        category: Category;
-        explanation: string
-        contextualAnalysis?: string // Optional field for contextual analysis
-        sourceVerification: string; 
+      speaker: string;
+      text: string;
+      category: Category;
+      explanation: string
+      contextualAnalysis?: string // Optional field for contextual analysis
+      sourceVerification: string; 
       }
 
       enum Category {
-        GroundedOpinion = "Grounded Opinion",
-        ManipulativeOpinion = "Manipulative Opinion"
-        BaselessOpinion = "Baseless Opinion",
-        VerifiedFact = "Verified Fact",
-        ContextuallyManipulatedFact = "Contextually Manipulated Fact",
-        UnverifiedClaims = "Unverified Claims",
-        GroundedSpeculation = "Grounded Speculation",
-        ManipulativeSpeculation = "Manipulative Speculation",
-        BaselessSpeculation = "Baseless Speculation",
-        PartiallyVerified = "Partially  Verified",
-        FundamentallyConfirmed = "Fundamentally Confirmed",
-        FactuallyIncorrect = "Factually Incorrect,
-        Question = "Question",
-        IncompleteStatement = "Incomplete Statement",
-        ManipulativeQuestion = "Manipulative Question"
+      GroundedOpinion = "Grounded Opinion",
+      ManipulativeOpinion = "Manipulative Opinion"
+      BaselessOpinion = "Baseless Opinion",
+      VerifiedFact = "Verified Fact",
+      ContextuallyManipulatedFact = "Contextually Manipulated Fact",
+      UnverifiedClaims = "Unverified Claims",
+      GroundedSpeculation = "Grounded Speculation",
+      ManipulativeSpeculation = "Manipulative Speculation",
+      BaselessSpeculation = "Baseless Speculation",
+      PartiallyVerified = "Partially  Verified",
+      FundamentallyConfirmed = "Fundamentally Confirmed",
+      FactuallyIncorrect = "Factually Incorrect,
+      Question = "Question",
+      IncompleteStatement = "Incomplete Statement",
+      ManipulativeQuestion = "Manipulative Question"
       }
 
 
       interface Output {
-        sentence: FactCheckSentence[]
-        overalAssesment: string;
-        consensusCheck: string;
-        factCheckConclusion: string;
-        considerationOfMultiplePerspectives: string;
-        democraticConclusion: string;
-        contextualConclusion: string;
-        middlegroundConclusion: string;
-        furtherResources: string[] // with link
+      sentence: FactCheckSentence[]
+      overalAssesment: string;
+      consensusCheck: string;
+      factCheckConclusion: string;
+      considerationOfMultiplePerspectives: string;
+      democraticConclusion: string;
+      contextualConclusion: string;
+      middlegroundConclusion: string;
+      furtherResources: string[] // with link
       }
 
       title of video: ${title},
@@ -566,7 +566,7 @@ export class JobsService {
       Here's another example: ${example[1].output}
 
       Consistent Rigor in Analysis
-"Maintain a consistent level of rigor throughout the analysis. Every statement, regardless of its source, should be subjected to the same stringent criteria of empirical verification and alignment with established knowledge. This consistent approach is vital in ensuring the reliability and accuracy of the analysis, especially when dealing with statements that intertwine personal experiences with broader claims."
+      "Maintain a consistent level of rigor throughout the analysis. Every statement, regardless of its source, should be subjected to the same stringent criteria of empirical verification and alignment with established knowledge. This consistent approach is vital in ensuring the reliability and accuracy of the analysis, especially when dealing with statements that intertwine personal experiences with broader claims."
 
       ⚠️ Critical Reminder: In your analysis, strictly adhere to segmenting the transcript into individual FactCheckSentence instances. Each sentence or closely related group of sentences must be analyzed and reported as a separate FactCheckSentence. This segmentation is essential for a detailed and accurate evaluation. Do not analyze or report the transcript as a single, continuous text. Maintain a consistent level of rigor throughout the analysis. Every statement, regardless of its source, should be subjected to the same stringent criteria of empirical verification and alignment with established knowledge.
       `,
