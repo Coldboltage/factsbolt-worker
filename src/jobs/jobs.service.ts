@@ -444,7 +444,7 @@ export class JobsService {
       Explicit Segmentation in Output:
 
       Clearly segment the transcript into individual parts. Each segment should consist of a single sentence or a closely related group of sentences.
-      Structured Analysis for Each Segment:
+      Structured Analysis for Each Segment while creating a dynamic speaker naming system for a conversation transcript based on their contextual role or position within the dialogue. This will remove names like Speaker A and B:
 
       Use the following structure for the analysis of each segment:
       Segment [Number] - Speaker [Persona]: [Brief Descriptor]
