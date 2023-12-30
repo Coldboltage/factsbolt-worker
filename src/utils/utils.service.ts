@@ -96,6 +96,8 @@ export class UtilsService {
         !url ||
         url.includes('youtube') ||
         url.includes('pdf') ||
+        url.includes('.PDF') ||
+        url.includes('.cgi') ||
         url.includes('.cgi')
       )
         continue;
