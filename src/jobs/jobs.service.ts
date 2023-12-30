@@ -440,11 +440,14 @@ export class JobsService {
 
       Define Speaker Personas:
 
-      Assign a unique and descriptive persona to each speaker, reflecting their role or perspective in the conversation (e.g., Financial Novice, Investment Guide).
+      Essential Persona Assignment: Begin by assigning a unique and descriptive persona to each speaker. This persona should reflect their distinct role or perspective in the conversation (e.g., Financial Novice, Investment Guide). It's crucial that these personas are not only unique but also capture the essence of each speaker's contribution to the conversation.
+      Mandatory Persona Usage: Once a persona is assigned, it is mandatory to use this specific persona consistently throughout the analysis. Each segment of the conversation should clearly indicate the speaker's persona, reinforcing their role and perspective.
+      
       Explicit Segmentation in Output:
 
       Clearly segment the transcript into individual parts. Each segment should consist of a single sentence or a closely related group of sentences.
-      Structured Analysis for Each Segment while creating a dynamic speaker naming system for a conversation transcript based on their contextual role or position within the dialogue. This will remove names like Speaker A and B:
+      
+      Structured Analysis for Each Segment
 
       Use the following structure for the analysis of each segment:
       Segment [Number] - Speaker [Persona]: [Brief Descriptor]
