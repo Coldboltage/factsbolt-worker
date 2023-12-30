@@ -484,60 +484,62 @@ export class UtilsService {
         ),
         output: JSON.stringify(`
         Context Summary:
-        Speaker A discusses the historical occurrence of psychological epidemics over the past 300 years, listing multiple personality disorder, cutting, bulimia, and anorexia as examples. The speaker suggests that confusion about fundamental elements of identity can lead to these epidemics, particularly affecting those who are already vulnerable.
-        
-        Speaker A:
-        
-        "We've tracked psychological epidemics going back 300 years."
-        
-        Category: Verified Fact
-        Explanation: Historical records and academic research have documented various psychological conditions and their prevalence over time.
-        Source Verification: This statement aligns with well-established knowledge in the field of psychology and history of medicine.
-        "Multiple personality disorder. It cycles in society, disappears. Then there's one case, then it spreads like mad."
-        
-        Category: Grounded Speculation
-        Explanation: The speaker is referring to the fluctuating recognition and diagnosis of Dissociative Identity Disorder (formerly known as Multiple Personality Disorder). While there have been periods of heightened attention and diagnosis, followed by skepticism and decline, the exact pattern described is an oversimplification.
-        Source Verification: The DSM-5 provides diagnostic criteria for Dissociative Identity Disorder, and historical analyses show varying levels of attention to the disorder.
-        "Cutting was a psychological epidemic. Bulimia was a psychological epidemic. Anorexia was a psychological epidemic."
-        
-        Category: Grounded Opinion
-        Explanation: The speaker is expressing a view that these behaviors have had periods of increased prevalence and attention, which can be supported by data on reported cases and media attention.
-        Source Verification: Research articles and historical data on eating disorders and self-harm support the claim that these issues have seen varying levels of prevalence and public concern.
-        "And the rule, basically, is that if you confuse people about a fundamental element of their identity, then those who are already so confused they're barely hanging on are going to fall prey to that and all hell's going to break loose."
-        
-        Category: Grounded Opinion
-        Explanation: The speaker is positing a theory that confusion about identity can exacerbate psychological issues in vulnerable individuals. This is a reasonable hypothesis grounded in psychological theories about identity and mental health.
-        Source Verification: Psychological literature supports the notion that identity confusion can be a stressor that contributes to mental health issues, though this is a complex area with many contributing factors.
-        Overall Assessment:
-        The speaker's statements mix verified facts with grounded opinions and speculations. While the historical existence of psychological epidemics is well-documented, the patterns of these epidemics are more complex than the speaker suggests. The speaker's theory about identity confusion's role in psychological epidemics is a grounded opinion that aligns with some psychological theories but may not capture the full complexity of these phenomena.
-        
-        Consensus Check:
-        The views presented by Speaker A partially align with recognized research in the field of psychology. While it is true that psychological conditions can have periods of increased diagnosis and attention, the idea of them being "epidemics" is more contentious and not universally accepted as the best descriptor. The role of identity confusion in mental health is a recognized factor, but it is one of many and does not solely account for the rise and fall of these conditions.
-        
-        Fact Check Conclusion:
-        The speaker's statements provide a simplified overview of complex psychological phenomena. While there is truth to the historical fluctuation of certain disorders' prevalence, the use of the term "epidemic" and the singular focus on identity confusion may not fully capture the multifaceted nature of these issues.
-        
-        Consideration of Multiple Perspectives:
-        The speaker's focus on identity confusion as a primary cause of psychological issues does not fully consider other factors such as biological, environmental, and social influences that are widely recognized in the field of psychology.
-        
-        Democratic Values and Consensus:
-        The speaker's views on the role of identity in psychological health align with democratic values of individuality and self-concept. However, the oversimplified narrative may not fully reflect the democratic consensus on the importance of a multifaceted approach to mental health.
-        
-        Contextual Conclusion:
-        The speaker's statements, while grounded in some aspects of psychological theory, may lead to an oversimplified understanding of mental health epidemics. The context of these statements does not fully account for the complexity of factors contributing to the rise and fall of the prevalence of mental health disorders.
-        
-        Middle Ground Conclusion:
-        A balanced perspective acknowledges that psychological conditions can indeed have periods of increased attention and diagnosis, which may be influenced by cultural, societal, and medical factors. It is also important to recognize that identity plays a significant role in mental health, but it is not the sole factor. Ongoing challenges in accurately diagnosing and understanding these conditions persist, and a comprehensive approach that includes biological, psychological, and social considerations is necessary for progress.
+        Speaker A, identified as "Psychological Historian," discusses historical psychological conditions, suggesting patterns of prevalence and the impact of identity confusion on mental health.
 
-        Main Claim:
-        Category:
-        Explanation:
-        
+        Segment 1 - Psychological Historian: Discussing Historical Patterns
+
+        Speaker: Psychological Historian
+        Text: "We've tracked psychological epidemics going back 300 years."
+        Category: Verified Fact
+        Explanation: This statement aligns with historical research in psychology, indicating a documented understanding of psychological conditions over time.
+        Source Verification: Historical research and academic literature on the history of psychology.
+        Segment 2 - Psychological Historian: Commenting on Disorder Patterns
+
+        Speaker: Psychological Historian
+        Text: "Multiple personality disorder. It cycles in society, disappears. Then there's one case, then it spreads like mad."
+        Category: Grounded Speculation
+        Explanation: The speaker references the fluctuating recognition of Dissociative Identity Disorder, suggesting a cyclical pattern in society. This is a speculative interpretation of the disorder's historical diagnosis trends.
+        Source Verification: Diagnostic criteria from DSM-5; historical analyses of the disorder.
+        Segment 3 - Psychological Historian: Observing Behavioral Trends
+
+        Speaker: Psychological Historian
+        Text: "Cutting was a psychological epidemic. Bulimia was a psychological epidemic. Anorexia was a psychological epidemic."
+        Category: Grounded Opinion
+        Explanation: This view reflects observed trends in the prevalence of these behaviors, supported by data and media reports.
+        Source Verification: Research articles and historical data on eating disorders and self-harm.
+        Segment 4 - Psychological Historian: Theorizing on Identity and Mental Health
+
+        Speaker: Psychological Historian
+        Text: "And the rule, basically, is that if you confuse people about a fundamental element of their identity, then those who are already so confused they're barely hanging on are going to fall prey to that and all hell's going to break loose."
+        Category: Grounded Opinion
+        Explanation: The speaker posits a theory linking identity confusion to exacerbated mental health issues in vulnerable individuals, a hypothesis supported by some psychological theories.
+        Source Verification: Psychological literature on identity and mental health stressors.
+        Overall Assessment:
+        The Psychological Historian's statements blend verified facts with grounded opinions and speculations. The historical existence of psychological conditions is well-documented, but the presented patterns and the singular focus on identity confusion lack comprehensive coverage of the complexities involved in these phenomena.
+
+        Consensus Check:
+        Speaker A's views partially align with established research in psychology. The term "epidemics" for psychological conditions is contentious, and the singular emphasis on identity confusion is an oversimplification.
+
+        Fact Check Conclusion:
+        The speaker provides an overview of psychological conditions with some factual basis, but the terminology and focus on identity confusion do not fully capture the multifaceted nature of these issues.
+
+        Consideration of Multiple Perspectives:
+        The speaker's emphasis on identity confusion omits other critical factors like biological, environmental, and social influences, which are vital in psychological understanding.
+
+        Democratic Values and Consensus:
+        The speaker's emphasis on individual identity aligns with democratic values of individuality, but the narrative oversimplifies mental health issues, not fully reflecting the democratic consensus on comprehensive mental health approaches.
+
+        Contextual Conclusion:
+        The statements may lead to an oversimplified understanding of mental health 'epidemics,' not fully acknowledging the complexity of factors contributing to these conditions' prevalence.
+
+        Middle Ground Conclusion:
+        A balanced view recognizes the fluctuating attention to psychological conditions influenced by various factors. Identity is significant in mental health, but it's not the sole factor. A comprehensive approach considering biological, psychological, and social factors is necessary.
+
         Further Resources:
-        
-        American Psychiatric Association. (2013). Diagnostic and Statistical Manual of Mental Disorders (5th ed.). Arlington, VA: American Psychiatric Publishing.
-        Paris, J. (2012). The rise and fall of dissociative identity disorder. Journal of Nervous and Mental Disease, 200(12), 1076-1079. Link
-        Stein, D. J., & Phillips, K. A. (2013). The social construction of disorders: From anorexia to atypical depression. Cambridge University Press. Link`),
+
+        American Psychiatric Association. (2013). DSM-5.
+        Paris, J. (2012). The rise and fall of dissociative identity disorder.
+        Stein, D. J., & Phillips, K. A. (2013). The social construction of disorders.`),
       },
       {
         input: baseTemplateQuestion(
@@ -545,68 +547,76 @@ export class UtilsService {
           `The thing that worries me the most about the United States in general is when otherwise free people become convinced that the primary way to adjudicate problems is through government action. The moment you've decided I don't go to my neighbor and solve this on our own, or the moment you've decided that we don't settle this within the marketplace, that is by getting a law passed at the expense of somebody else for my benefit, and we use. The moment that becomes the norm within a society, you will abandon freedom for control of power. Because if that becomes the primary way that we solve our differences, then we will fight horribly and mercilessly against people that we used to care about in order to control that mechanism.`,
         ),
         output: `
-        Speaker A:
+        Speaker A - Libertarian Critic: Discussing Government Intervention
+
+        Speaker: Libertarian Critic
         Text: "The thing that worries me the most about the United States in general is when otherwise free people become convinced that the primary way to adjudicate problems is through government action."
         Category: Grounded Opinion
-        Explanation: This statement reflects the speaker's concern about a reliance on government intervention to solve problems, which is a subjective viewpoint based on their interpretation of freedom and governance.
-        Source Verification: This opinion aligns with a libertarian perspective, which emphasizes minimal government intervention in personal and economic affairs.
-        Speaker A:
-        
+        Explanation: The speaker expresses concern over reliance on government intervention, reflecting a libertarian perspective on governance and individual freedom.
+        Source Verification: This opinion aligns with libertarian ideals of minimal government intervention.
+        Speaker A - Libertarian Critic: Preferring Non-Governmental Solutions
+
+        Speaker: Libertarian Critic
         Text: "The moment you've decided I don't go to my neighbor and solve this on our own, or the moment you've decided that we don't settle this within the marketplace, that."
         Category: Incomplete Statement
-        Explanation: The speaker's statement is incomplete and seems to be leading to a point about preferring community or market-based solutions over governmental ones.
-        Speaker A:
-        
+        Explanation: The statement, though incomplete, suggests a preference for community or market-based solutions over government intervention.
+        Source Verification: N/A (due to incomplete statement)
+        Speaker A - Libertarian Critic: Critiquing Law for Personal Benefit
+
+        Speaker: Libertarian Critic
         Text: "Is by getting a law passed at the expense of somebody else for my benefit, and we use."
         Category: Grounded Opinion
-        Explanation: The speaker is expressing an opinion that laws can be used to benefit one party at the expense of another, which is a common critique in political discourse about the nature of legislation.
-        Speaker C:
-        
+        Explanation: The speaker critiques the use of legislation for personal gain at others' expense, a viewpoint common in political discourse about legislation.
+        Source Verification: N/A (opinion-based statement)
+        Speaker C - Political Theorist: Discussing Government Power
+
+        Speaker: Political Theorist
         Text: "Violence to achieve it."
         Category: Grounded Speculation
-        Explanation: The speaker seems to be speculating that the use of government power to pass laws can be a form of violence. This is a grounded speculation as it reflects a philosophical viewpoint that equates state enforcement with violence, a perspective shared by some political theorists.
-        Speaker A:
-        
+        Explanation: The speaker speculates that government power in law-making can equate to a form of violence, reflecting a philosophical perspective on state enforcement.
+        Source Verification: Philosophical and political theory literature.
+        Speaker A - Libertarian Critic: Warning Against Power Control
+
+        Speaker: Libertarian Critic
         Text: "The moment that becomes the norm within a society, you will abandon freedom for control of power. Because if that becomes the primary way that we solve our differences, then we will fight horribly and mercilessly against people that we used to care about in order to control that mechanism."
         Category: Grounded Speculation
-        Explanation: The speaker is speculating about a societal shift towards power control if government action becomes the norm for solving problems. This speculation is grounded in the speaker's belief system about government and freedom.
-        Speaker D:
-        
-        Text: "And that's what I'm worried about."
-        Category: Personal Fact
-        Explanation: This is a personal fact as it expresses the speaker's personal worry, which cannot be independently verified but is true for the individual.
-        Overall Assessment:
-        The speakers express concerns about the role of government in solving societal problems, favoring individual or market-based solutions. The statements reflect a libertarian viewpoint, which is a legitimate perspective in political philosophy. The conversation lacks direct factual claims, focusing instead on opinions and speculations grounded in a particular ideology.
-        
-        Consensus Check:
-        The views presented do not align with the consensus of all political ideologies but do align with libertarian principles. There is a broader debate about the role of government in society, with varying opinions across the political spectrum.
-        
-        Fact Check Conclusion:
-        The speakers' statements are largely opinion-based, reflecting a concern for the potential overreach of government power and its impact on individual freedoms. These opinions are grounded in a libertarian perspective and are part of a legitimate debate about governance.
-        
-        Consideration of Multiple Perspectives:
-        The primary perspective is libertarian, focusing on the potential negative consequences of government intervention. Alternative perspectives, such as those advocating for more government involvement to address societal issues, are not covered in the transcript.
-        
-        Democratic Values and Consensus:
-        The speakers' views align with democratic values that emphasize individual freedoms and limited government, which is one aspect of a broader democratic consensus that includes a range of views on the role of government.
-        
-        Contextual Conclusion:
-        The transcript presents a viewpoint that is wary of government intervention, suggesting that it could lead to societal conflict and a loss of freedom. This perspective is not manipulative but is presented as a concern based on the speakers' beliefs.
-        
-        Middle Ground Conclusion:
-        The middle ground in this debate recognizes the complexities of governance and the need to balance individual freedoms with collective action for the common good. While the speakers advocate for minimal government intervention, a balanced view would also consider the role of government in providing public goods, ensuring justice, and addressing issues that cannot be effectively managed by individuals or the market alone.
+        Explanation: Speculates a societal shift towards power control if reliance on government action becomes normative, rooted in the speaker's beliefs about government and freedom.
+        Source Verification: N/A (speculative statement)
+        Speaker D - Concerned Citizen: Expressing Personal Concern
 
-        Main Claim:
-        Category:
-        Explanation:
-        
+        Speaker: Concerned Citizen
+        Text: "And that's what I'm worried about."
+        Category: Personal Inquiry or Expression
+        Explanation: This is a personal expression of worry, reflecting the speaker's individual concern.
+        Source Verification: N/A (personal statement)
+        Overall Assessment:
+        The conversation reflects libertarian concerns about government overreach and its impact on freedom. The statements primarily comprise opinions and speculations rooted in this ideology, without direct factual claims.
+
+        Consensus Check:
+        The views align with libertarian principles but do not represent a consensus across all political ideologies. The debate on the government's role is multifaceted, with diverse opinions.
+
+        Fact Check Conclusion:
+        The conversation is opinion-driven, focusing on the potential negatives of government intervention from a libertarian standpoint. These opinions contribute to a broader, legitimate political discourse.
+
+        Consideration of Multiple Perspectives:
+        The dominant libertarian perspective overlooks alternative views advocating for government intervention in addressing societal issues.
+
+        Democratic Values and Consensus:
+        The libertarian views on limited government align with one aspect of democratic values emphasizing individual freedom. However, the broader democratic consensus encompasses a range of views on the government's role.
+
+        Contextual Conclusion:
+        The conversation presents a libertarian viewpoint wary of government intervention, suggesting societal conflict and loss of freedom as potential consequences.
+
+        Middle Ground Conclusion:
+        A balanced view recognizes the need to balance individual freedoms with collective action for the common good. While advocating minimal government intervention, a comprehensive approach should also acknowledge the government's role in ensuring justice and addressing collective needs.
+
         Further Resources:
-        
-        "On Liberty" by John Stuart Mill (https://www.gutenberg.org/ebooks/34901)
-        "The Road to Serfdom" by Friedrich Hayek (https://mises.org/library/road-serfdom-0)
-        "The Constitution of Liberty" by Friedrich Hayek (https://www.press.uchicago.edu/ucp/books/book/chicago/C/bo3684012.html)
-        "Anarchy, State, and Utopia" by Robert Nozick (https://www.basicbooks.com/titles/robert-nozick/anarchy-state-and-utopia/9780465051007/)
-        These resources provide a broader context for understanding the debate on the role of government and individual freedoms.`,
+
+        "On Liberty" by John Stuart Mill
+        "The Road to Serfdom" by Friedrich Hayek
+        "The Constitution of Liberty" by Friedrich Hayek
+        "Anarchy, State, and Utopia" by Robert Nozick
+        `,
       },
     ];
   }

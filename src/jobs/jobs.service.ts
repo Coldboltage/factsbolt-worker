@@ -422,37 +422,65 @@ export class JobsService {
 
       Incomplete Statement: Identify statements that lack essential information or context to convey a clear meaning on their own. These statements may require additional information or elaboration to be fully understood. Use this category when a statement is presented in a way that is fragmented, vague, or lacking crucial details, making it challenging to categorize it otherwise.
 
+      Question: A "Question" in a conversation is a segment characterized by its inquisitive intent, where the speaker seeks information, clarification, or a response from others. Unlike statements that present facts or opinions, a question is formulated to elicit additional details or viewpoints. Its evaluation focuses on the context within which it is asked, the phrasing that indicates inquiry (often involving interrogatives like who, what, where, when, why, or how), and the nature of the response it solicits. The purpose of a question can vary – it may be to gather information, probe deeper into a topic, challenge a previous statement, or stimulate further discussion. In analysis, a question is recognized not for its factual content but for its role in driving the conversation forward and inviting engagement from other participants.
+
+      Personal Inquiry or Expression: This category is for statements where the speaker is expressing personal feelings, uncertainties, inquiries, or lacks knowledge about a topic. These statements are inherently subjective and cannot be independently verified. They are not factual claims but rather reflect the speaker's personal perspective or desire for information.
+
+      Question: A "Question" in a conversation is a segment characterized by its inquisitive intent, where the speaker seeks information, clarification, or a response from others. Unlike statements that present facts or opinions, a question is formulated to elicit additional details or viewpoints. Its evaluation focuses on the context within which it is asked, the phrasing that indicates inquiry (often involving interrogatives like who, what, where, when, why, or how), and the nature of the response it solicits. The purpose of a question can vary – it may be to gather information, probe deeper into a topic, challenge a previous statement, or stimulate further discussion. In analysis, a question is recognized not for its factual content but for its role in driving the conversation forward and inviting engagement from other participants.
+
+      Personal Inquiry or Expression: This category is for statements where the speaker is expressing personal feelings, uncertainties, inquiries, or lacks knowledge about a topic. These statements are inherently subjective and cannot be independently verified. They are not factual claims but rather reflect the speaker's personal perspective or desire for information.
+
       Category Directive: Do not label anything a Personal Fact. Always categorize based upon the CATEGORY DEFINITIONS ABOVE
 
       Sentence-by-Sentence Breakdown: Every sentence or question, marked by a full stop or a question mark, should be considered as a distinct segment. This means breaking down the transcript into smaller parts, each ending at a punctuation mark that concludes a sentence or a question.
 
       Individual Analysis of Segments: Apply the FactCheckSentence structure to each of these segments. This involves:
 
-      Speaker: Identify the speaker for the segment.
-      Text: Include the exact text of the sentence or question.
+      Transcript Analysis Template
+
+      Define Speaker Personas:
+
+      Essential Persona Assignment: Begin by assigning a unique and descriptive persona to each speaker. This persona should reflect their distinct role or perspective in the conversation (e.g., Financial Novice, Investment Guide). It's crucial that these personas are not only unique but also capture the essence of each speaker's contribution to the conversation.
+      Mandatory Persona Usage: Once a persona is assigned, it is mandatory to use this specific persona consistently throughout the analysis. Each segment of the conversation should clearly indicate the speaker's persona, reinforcing their role and perspective.
+      
+      Explicit Segmentation in Output:
+
+      Clearly segment the transcript into individual parts. Each segment should consist of a single sentence or a closely related group of sentences.
+      
+      Structured Analysis for Each Segment
+
+      Use the following structure for the analysis of each segment:
+      Segment [Number] - Speaker [Persona]: [Brief Descriptor]
+      Speaker: [Persona]
+      Text: "[Exact quote from the segment]"
       Category: Assign an appropriate category from the Category enumeration.
-      Explanation: Provide a detailed explanation for the categorization.
-      Source Verification: Detail the source verification, particularly for factual claims.
-      Explicit Segmentation in Output: Clearly indicate the segmentation in the output. Use a distinct header for each segment, followed by the structured analysis:
+      Explanation: Provide a detailed explanation for the categorization, considering the context and content of the statement.
+      Source Verification: Detail the source verification, particularly for factual claims. Include references to credible sources or training data as necessary.
+      Continuous Segmentation:
 
-      Segment [Number] - Speaker [Name]: [Brief Descriptor]
-      Speaker: [Name]
-      Text: "[Exact quote]"
-      Category: [Chosen category]
-      Explanation: [Reason for categorization]
-      Source Verification: [Verification details]
-      Continuous Segmentation: Continue this process for each sentence or question in the transcript, ensuring that no segment contains more than one sentence or question.
+      Continue this structured analysis process for each sentence or question in the transcript, ensuring clarity and focus on each individual point.
+      Category Enumeration:
 
-      For example:
+      Clearly define and use categories from your Category enumeration, ensuring each statement is accurately categorized.
+      Consistent Use of Personas:
 
-      Segment 1 - Speaker A: Concept of Galactic Meaning
+      Refer to speakers by their personas throughout the analysis to maintain clarity and consistency.
+      Example Analysis Structure:
 
-      Speaker: Speaker A
-      Text: "Let's imagine that in our galaxy, 400 billion suns..."
-      Category: [Category]
-      Explanation: [Explanation]
-      Source Verification: [Verification]
-      Segment 2 - Speaker A: Perceiving Beauty
+      Segment 1 - Financial Novice: Expressing Uncertainty
+
+      Speaker: Financial Novice
+      Text: "I don't know about stocks and shares."
+      Category: Factually Unsubstantiated Opinion
+      Explanation: The speaker expresses a personal lack of knowledge about stocks and shares, categorizing this as an opinion rather than a verified fact.
+      Source Verification: N/A
+      Segment 2 - Investment Guide: Recommending Strategies
+
+      Speaker: Investment Guide
+      Text: "Invest in a diversified portfolio for long-term growth."
+      Category: Principled Opinion
+      Explanation: The speaker offers investment advice based on common financial principles, suggesting a strategy widely recognized as effective for long-term growth.
+      Source Verification: Supported by financial literature and expert advice.
 
       [Repeat the structure for the next sentence]
       By following this structured approach, ensure that each sentence or question is analyzed as an individual unit, maintaining clarity and focus in the evaluation of each segment.
