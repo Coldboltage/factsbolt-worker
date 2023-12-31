@@ -55,6 +55,7 @@ export class UtilsService {
       data = await response.json();
     } catch (error) {
       console.log(error);
+      return [];
     }
     console.log(data.organic_results);
 

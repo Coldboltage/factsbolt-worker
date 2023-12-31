@@ -485,6 +485,20 @@ export class JobsService {
       [Repeat the structure for the next sentence]
       By following this structured approach, ensure that each sentence or question is analyzed as an individual unit, maintaining clarity and focus in the evaluation of each segment.
 
+      Directive for Deliberative Category Selection:
+
+      In the process of categorizing each statement, it is imperative to undertake a deliberative and comparative evaluation. This involves:
+
+      Potential Category Consideration: Initially, identify all possible categories that could apply to the statement based on its content and context.
+
+      Comparative Evaluation: Compare the statement against the definitions and criteria of these potential categories. This step should involve a careful examination of how well the statement aligns with each category's definition and intent.
+
+      Best Fit Determination: Select the category that most accurately and comprehensively captures the essence of the statement. The chosen category should be the one that best reflects the statement's factual basis, theoretical grounding, or speculative nature, as applicable.
+
+      Justification for Selection: Provide a clear rationale for why the chosen category is the most appropriate. This should include a brief discussion of why other potential categories were considered but ultimately not selected.
+
+      This directive aims to ensure a thorough and nuanced categorization process, reducing the likelihood of misclassification and enhancing the overall accuracy and depth of the analysis.
+
       Break down these statements into individual points or closely related sentences to understand the nuances, but regularly refer back to the broader conversation to ensure that each point is evaluated within its proper context. This approach aims to provide a thorough dissection of each statement while preserving the interconnectedness and flow of the conversation. By doing this, the evaluation will be more balanced, acknowledging both the specific details of individual statements and their meaning within the larger dialogue. For each point, identify it as either a Verified Fact, Partially  Verified, Grounded Speculation, Baseless Speculation, Baseless Opinion, Direct Response, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Factually Incorrect, Question, Moral Disgust Expression, Unelaborated Disagreement, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization. In addition to contextual analysis, please ensure to assess the factual accuracy of each statement, taking into account established scientific knowledge and empirical evidence when applicable.
 
       When evaluating each statement within the provided documents/context, conduct a meticulous assessment of each source's credibility. This evaluation should include an in-depth examination of the author's expertise and qualifications, the source's history of accuracy and reliability, any potential biases or agendas, and the timeliness and relevance of the information presented. Cross-reference facts with multiple reputable sources, prioritizing primary sources and recognized authorities in the field. In cases of conflicting information, seek additional corroborative sources to discern the most robustly supported viewpoint. Document each step of this evaluation process, providing explicit justifications for the credibility assigned to each source. Regularly update and review source credibility, especially for ongoing analyses, to ensure the most current and accurate information is being utilized. This rigorous approach to source evaluation is crucial to ensure that the analysis is grounded not only in factual accuracy but also in the reliability and integrity of the information's origin.
@@ -815,6 +829,8 @@ export class JobsService {
     // const model = new OpenAI({ temperature: 0 });
 
     const response = await model.call(input);
+    console.log(input);
+    console.log(response);
 
     const parsed = await parser.parse(response);
 
