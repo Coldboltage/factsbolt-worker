@@ -40,6 +40,9 @@ import weaviate from 'weaviate-ts-client';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
 import { RunnableSequence } from 'langchain/schema/runnable';
 import { AmendedSpeech, JobStatus } from '../utils/utils.types';
+import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
+import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
+import { DocumentInterface } from '@langchain/core/documents';
 
 @Injectable()
 export class JobsService {
@@ -321,26 +324,44 @@ export class JobsService {
       );
     }
 
-    const vectorStoreRetriever = new HydeRetriever({
-      vectorStore,
-      llm,
-      k: 38,
-      verbose: true,
+    const baseCompressor = LLMChainExtractor.fromLLM(model);
+
+    const vectorStoreRetriever = new ContextualCompressionRetriever({
+      baseCompressor,
+      baseRetriever: vectorStore.asRetriever(10), // Your existing vector store
     });
 
-    const results = await vectorStoreRetriever.getRelevantDocuments(
-      `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
-    
-      Construct search queries that target these identified subjects and claims, with a focus on those deemed more significant. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid the use of special characters like question marks, periods, or non-alphanumeric symbols. The goal is to create queries that delve into the specifics of the situation, giving priority to the most important aspects, such as key individual statements, significant legal proceedings, crucial organizational responses, and vital media coverage.
-    
-      Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects. Consider the significance of each fact in the context of the transcript and the broader discussion.
-    
-      Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription, with an emphasis on those of higher priority. This approach ensures a thorough exploration of each significant aspect of the event or issue, with a focus on the most impactful elements.
-      Title: ${title},
-        Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}
-        
-        Lastly, please uses sources with this most credibility as priority`,
+    let results: DocumentInterface<Record<string, any>>[];
+
+    const transcriptClaims = await this.utilsService.getAllClaimsFromTranscript(
+      transcriptionJob,
+      title,
     );
+
+    for (const claim of transcriptClaims) {
+      results.push(...(await vectorStoreRetriever.getRelevantDocuments(claim)));
+    }
+
+    // const vectorStoreRetriever = new HydeRetriever({
+    //   vectorStore,
+    //   llm,
+    //   k: 38,
+    //   verbose: true,
+    // });
+
+    // const results = await vectorStoreRetriever.getRelevantDocuments(
+    //   `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
+
+    //   Construct search queries that target these identified subjects and claims, with a focus on those deemed more significant. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid the use of special characters like question marks, periods, or non-alphanumeric symbols. The goal is to create queries that delve into the specifics of the situation, giving priority to the most important aspects, such as key individual statements, significant legal proceedings, crucial organizational responses, and vital media coverage.
+
+    //   Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects. Consider the significance of each fact in the context of the transcript and the broader discussion.
+
+    //   Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription, with an emphasis on those of higher priority. This approach ensures a thorough exploration of each significant aspect of the event or issue, with a focus on the most impactful elements.
+    //   Title: ${title},
+    //     Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}
+
+    //     Lastly, please uses sources with this most credibility as priority`,
+    // );
 
     // const results = await vectorStoreRetriever.getRelevantDocuments(
     //   `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Focus on extracting these core elements from the transcription, concentrating on the specifics of the situation rather than the speaker's broader perspective or the general context of the discussion.
