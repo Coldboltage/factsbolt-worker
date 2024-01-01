@@ -536,6 +536,10 @@ export class UtilsService {
         Middle Ground Conclusion:
         A balanced view recognizes the fluctuating attention to psychological conditions influenced by various factors. Identity is significant in mental health, but it's not the sole factor. A comprehensive approach considering biological, psychological, and social factors is necessary.
 
+        Summarized Main Claim: The main claim in the conversation is that historical patterns of psychological conditions, often termed as 'epidemics', have been a recurring phenomenon over the last 300 years, and these patterns reflect a complex interaction of societal, diagnostic, and individual identity factors.
+        Selected Category: Grounded Opinion
+        Rationale for Category Selection: This claim is categorized as Grounded Opinion because it is based on observations and analyses in the field of psychology, particularly regarding the historical trends and societal impacts of various psychological conditions. The claim synthesizes factual historical data with theoretical interpretations, making it an opinion that is informed by but not conclusively proven by empirical research.
+
         Further Resources:
 
         American Psychiatric Association. (2013). DSM-5.
@@ -611,8 +615,10 @@ export class UtilsService {
         Middle Ground Conclusion:
         A balanced view recognizes the need to balance individual freedoms with collective action for the common good. While advocating minimal government intervention, a comprehensive approach should also acknowledge the government's role in ensuring justice and addressing collective needs.
 
-        Further Resources:
-
+        Summarized Main Claim: The main claim discussed in the conversation is the concern over government overreach and its impact on individual freedom, emphasizing the viewpoint that over-reliance on government intervention for problem-solving can lead to a loss of freedom and increased societal conflict.
+        Selected Category: Grounded Opinion
+        Rationale for Category Selection: This claim is categorized as Grounded Opinion as it reflects a libertarian perspective on the role of government in society. While it aligns with libertarian principles and political philosophy, it is not a universally accepted fact but rather an opinion rooted in a specific ideological stance. The claim is supported by the principles of libertarian political philosophy, as outlined in political science literature, but does not represent a consensus across all political ideologies.
+       
         "On Liberty" by John Stuart Mill
         "The Road to Serfdom" by Friedrich Hayek
         "The Constitution of Liberty" by Friedrich Hayek
