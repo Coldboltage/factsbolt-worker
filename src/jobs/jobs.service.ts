@@ -363,26 +363,36 @@ export class JobsService {
 
     results.push(...fullTranscriptClaim);
 
-    // const vectorStoreRetriever = new HydeRetriever({
-    //   vectorStore,
-    //   llm,
-    //   k: 38,
-    //   verbose: true,
-    // });
+    const vectorStoreRetrieverHyde = new HydeRetriever({
+      vectorStore,
+      llm: baseCompressorModel,
+      k: 6,
+      verbose: false,
+    });
 
-    // const results = await vectorStoreRetriever.getRelevantDocuments(
-    //   `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
+    const vectorStoreRetrieverHydeCompressor =
+      new ContextualCompressionRetriever({
+        baseCompressor,
+        baseRetriever: vectorStoreRetrieverHyde, // Your existing vector store
+      });
 
-    //   Construct search queries that target these identified subjects and claims, with a focus on those deemed more significant. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid the use of special characters like question marks, periods, or non-alphanumeric symbols. The goal is to create queries that delve into the specifics of the situation, giving priority to the most important aspects, such as key individual statements, significant legal proceedings, crucial organizational responses, and vital media coverage.
+    results.push(
+      ...(await vectorStoreRetrieverHydeCompressor.getRelevantDocuments(
+        `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
 
-    //   Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects. Consider the significance of each fact in the context of the transcript and the broader discussion.
+      Construct search queries that target these identified subjects and claims, with a focus on those deemed more significant. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid the use of special characters like question marks, periods, or non-alphanumeric symbols. The goal is to create queries that delve into the specifics of the situation, giving priority to the most important aspects, such as key individual statements, significant legal proceedings, crucial organizational responses, and vital media coverage.
 
-    //   Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription, with an emphasis on those of higher priority. This approach ensures a thorough exploration of each significant aspect of the event or issue, with a focus on the most impactful elements.
-    //   Title: ${title},
-    //     Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}
+      Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects. Consider the significance of each fact in the context of the transcript and the broader discussion.
 
-    //     Lastly, please uses sources with this most credibility as priority`,
-    // );
+      Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription, with an emphasis on those of higher priority. This approach ensures a thorough exploration of each significant aspect of the event or issue, with a focus on the most impactful elements.
+      Title: ${title},
+        Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}
+
+        Lastly, please uses sources with this most credibility as priority`,
+      )),
+    );
+
+    console.log(results);
 
     // const results = await vectorStoreRetriever.getRelevantDocuments(
     //   `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Focus on extracting these core elements from the transcription, concentrating on the specifics of the situation rather than the speaker's broader perspective or the general context of the discussion.
@@ -408,7 +418,6 @@ export class JobsService {
 
     const result = await chain.call({
       input_documents: fullResults,
-      verbose: true,
       question: `
       Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. 
             
@@ -575,15 +584,23 @@ export class JobsService {
       Maintain consistency in categorizing statements as opinions, facts, or incomplete statements.
       Provide a comprehensive assessment that includes verifiable facts, opinions, and incomplete statements."
 
-      Prioritize Documents/Context: Use provided documents/context as additional sources for verifying each segment. Adjust categories based on these documents/context.
+      Incorporating Documents/Context into Analysis Process:
 
-      Structured Analysis with References: Reference specific documents/context when categorizing each segment, detailing how they support or contradict the claims.
+      Ensure Documents/Context-Centric Verification: Actively cross-reference each segment against the information provided in the Documents/Context. Explicitly mention how the documents corroborate, contradict, or enhance the understanding of the statement being analyzed.
 
-      Document/Context-Centric Verification: Cross-reference statements with provided documents/context for verification. Adjust categories based on document evidence.
+      Make Explicit Citations: Include direct references or citations from the Documents/Context in your explanations. This provides clarity on how the Documents/Context influenced the categorization and supports the analytical process.
 
-      Continuous Document/Context Reference: Consistently refer to the documents/context throughout the analysis for accurate evaluation.
+      Assess Contextual Relevance: Evaluate the broader context given by the Documents/Context and consider how this context affects the interpretation of the statement. Determine if it provides additional insights or challenges the initial understanding.
 
-      Flexibility in Categorization: Be open to adjusting segment categorizations based on documents/context findings.
+      Balance Document Evidence with Other Credible Sources: While Documents/Context are key, balance their information with other credible sources, particularly for verified facts. This approach ensures a well-rounded analysis.
+
+      Address Document Limitations: If there are any limitations in the Documents/Context related to scope, recency, or detail, acknowledge these in your analysis. Understanding these limitations is crucial for the categorization process.
+
+      Regularly Update and Review Analysis: Keep the analysis current by regularly reviewing and updating the credibility of the sources, especially for ongoing analyses.
+
+      Incorporate Diverse Perspectives: Make sure the Documents/Context are not the sole source of perspective. When relevant, include other viewpoints or interpretations to gain a more holistic understanding of the statement.
+
+      By adhering to these steps, you ensure that each segment's evaluation is deeply informed by the Documents/Context and context provided, leading to a more accurate and comprehensive analysis.
 
       After categorizing and explaining each point, provide an in-depth overall assessment of the content, labelled as overall assessment. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made. State the categories that appeared with regularity
 

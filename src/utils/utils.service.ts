@@ -489,38 +489,34 @@ export class UtilsService {
         ),
         output: JSON.stringify(`
         Context Summary:
-        Speaker A, identified as "Psychological Historian," discusses historical psychological conditions, suggesting patterns of prevalence and the impact of identity confusion on mental health.
 
         Segment 1 - Psychological Historian: Discussing Historical Patterns
-
         Speaker: Psychological Historian
         Text: "We've tracked psychological epidemics going back 300 years."
         Category: Verified Fact
-        Explanation: This statement aligns with historical research in psychology, indicating a documented understanding of psychological conditions over time.
-        Source Verification: Historical research and academic literature on the history of psychology.
+        Explanation: This statement aligns with the extensive history of psychological research. Historical documentation and academic studies have indeed traced the evolution and prevalence of various psychological conditions over centuries. This is evident in the evolution of diagnostic criteria and understanding of mental health disorders across different historical periods.
+        Source Verification: Academic texts on the history of psychology and historical studies of mental health trends.
+        
         Segment 2 - Psychological Historian: Commenting on Disorder Patterns
-
         Speaker: Psychological Historian
         Text: "Multiple personality disorder. It cycles in society, disappears. Then there's one case, then it spreads like mad."
         Category: Grounded Speculation
-        Explanation: The speaker references the fluctuating recognition of Dissociative Identity Disorder, suggesting a cyclical pattern in society. This is a speculative interpretation of the disorder's historical diagnosis trends.
-        Source Verification: Diagnostic criteria from DSM-5; historical analyses of the disorder.
+        Explanation: The cyclical nature of the recognition of Dissociative Identity Disorder (formerly known as multiple personality disorder) aligns with some historical analyses but lacks comprehensive empirical data. The idea of "spreading" mental health disorders could be interpreted as reflecting societal and diagnostic trends rather than actual prevalence rates. This interpretation is speculative but grounded in the observed phenomena of changing diagnostic trends.
+        Source Verification: Comparative studies of mental health diagnoses over time, literature on the sociology of mental health.
+        
         Segment 3 - Psychological Historian: Observing Behavioral Trends
-
         Speaker: Psychological Historian
         Text: "Cutting was a psychological epidemic. Bulimia was a psychological epidemic. Anorexia was a psychological epidemic."
         Category: Grounded Opinion
-        Explanation: This view reflects observed trends in the prevalence of these behaviors, supported by data and media reports.
-        Source Verification: Research articles and historical data on eating disorders and self-harm.
+        Explanation: The statement reflects the observed increase in reported cases and societal awareness of these behaviors. The use of the term "epidemic" might be metaphorical, intending to highlight the significant rise in awareness and diagnosis rather than suggesting a literal spread like a contagious disease. This aligns with data on the increasing prevalence and media attention to these issues, especially in certain historical periods.
+        Source Verification: Epidemiological data on self-harm and eating disorders, media analysis of reporting on these conditions.
+        
         Segment 4 - Psychological Historian: Theorizing on Identity and Mental Health
-
         Speaker: Psychological Historian
         Text: "And the rule, basically, is that if you confuse people about a fundamental element of their identity, then those who are already so confused they're barely hanging on are going to fall prey to that and all hell's going to break loose."
         Category: Grounded Opinion
-        Explanation: The speaker posits a theory linking identity confusion to exacerbated mental health issues in vulnerable individuals, a hypothesis supported by some psychological theories.
-        Source Verification: Psychological literature on identity and mental health stressors.
-        Overall Assessment:
-        The Psychological Historian's statements blend verified facts with grounded opinions and speculations. The historical existence of psychological conditions is well-documented, but the presented patterns and the singular focus on identity confusion lack comprehensive coverage of the complexities involved in these phenomena.
+        Explanation: This theory posits a direct link between identity confusion and exacerbated mental health issues. While there is psychological literature supporting the impact of identity on mental health, the statement might oversimplify complex interactions of various factors in mental health. The "rule" mentioned is not an established psychological principle but rather a hypothesis that finds some support in psychological theories on identity.
+        Source Verification: Psychological studies on identity development and its impact on mental health.
 
         Consensus Check:
         Speaker A's views partially align with established research in psychology. The term "epidemics" for psychological conditions is contentious, and the singular emphasis on identity confusion is an oversimplification.
@@ -553,47 +549,47 @@ export class UtilsService {
         ),
         output: `
         Speaker A - Libertarian Critic: Discussing Government Intervention
-
         Speaker: Libertarian Critic
         Text: "The thing that worries me the most about the United States in general is when otherwise free people become convinced that the primary way to adjudicate problems is through government action."
         Category: Grounded Opinion
-        Explanation: The speaker expresses concern over reliance on government intervention, reflecting a libertarian perspective on governance and individual freedom.
-        Source Verification: This opinion aligns with libertarian ideals of minimal government intervention.
+        Explanation: The speaker's concern about over-reliance on government intervention to solve problems reflects a libertarian viewpoint, which values individual autonomy and minimal state interference. This opinion is consistent with libertarian principles that advocate for limited government roles in personal and economic matters.
+        Source Verification: Libertarian political philosophy, as outlined in political science literature.
+        
         Speaker A - Libertarian Critic: Preferring Non-Governmental Solutions
-
         Speaker: Libertarian Critic
         Text: "The moment you've decided I don't go to my neighbor and solve this on our own, or the moment you've decided that we don't settle this within the marketplace, that."
         Category: Incomplete Statement
-        Explanation: The statement, though incomplete, suggests a preference for community or market-based solutions over government intervention.
+        Explanation: Though incomplete, the statement suggests a libertarian preference for resolving issues through community engagement or market mechanisms rather than government intervention. This aligns with the libertarian emphasis on voluntary association and market solutions.
         Source Verification: N/A (due to incomplete statement)
+        
         Speaker A - Libertarian Critic: Critiquing Law for Personal Benefit
-
         Speaker: Libertarian Critic
         Text: "Is by getting a law passed at the expense of somebody else for my benefit, and we use."
         Category: Grounded Opinion
-        Explanation: The speaker critiques the use of legislation for personal gain at others' expense, a viewpoint common in political discourse about legislation.
-        Source Verification: N/A (opinion-based statement)
+        Explanation: This critique of legislation for personal gain reflects a concern common in libertarian and broader political discussions about the potential for legislation to be used for individual benefit at the expense of others. It highlights a skepticism towards the legislative process and its susceptibility to personal agendas.
+        Source Verification: Analysis of legislative processes and political economy literature discussing the misuse of law for personal gains.
+        
         Speaker C - Political Theorist: Discussing Government Power
-
         Speaker: Political Theorist
         Text: "Violence to achieve it."
         Category: Grounded Speculation
-        Explanation: The speaker speculates that government power in law-making can equate to a form of violence, reflecting a philosophical perspective on state enforcement.
-        Source Verification: Philosophical and political theory literature.
+        Explanation: The statement implies that the enforcement of laws can be a form of state violence. This perspective is rooted in a philosophical and political theory that views the state's enforcement power as inherently coercive or violent, particularly in the context of imposing laws.
+        Source Verification: Philosophical texts on state power and coercion, political theory literature discussing the nature of state enforcement.
+        
         Speaker A - Libertarian Critic: Warning Against Power Control
-
         Speaker: Libertarian Critic
         Text: "The moment that becomes the norm within a society, you will abandon freedom for control of power. Because if that becomes the primary way that we solve our differences, then we will fight horribly and mercilessly against people that we used to care about in order to control that mechanism."
         Category: Grounded Speculation
-        Explanation: Speculates a societal shift towards power control if reliance on government action becomes normative, rooted in the speaker's beliefs about government and freedom.
-        Source Verification: N/A (speculative statement)
+        Explanation: This statement speculates on a societal shift where the quest for power overtakes the value of freedom, in line with libertarian fears of government overreach. It reflects concerns about the potential for power struggles and societal division when government action becomes the primary way of resolving disputes.
+        Source Verification: N/A (speculative statement based on political philosophy)
+        
         Speaker D - Concerned Citizen: Expressing Personal Concern
-
         Speaker: Concerned Citizen
         Text: "And that's what I'm worried about."
         Category: Personal Inquiry or Expression
-        Explanation: This is a personal expression of worry, reflecting the speaker's individual concern.
+        Explanation: This statement is a personal expression of concern, reflecting the speaker's individual perspective and apprehensions. It doesn't make a factual claim but instead conveys a personal sentiment.
         Source Verification: N/A (personal statement)
+
         Overall Assessment:
         The conversation reflects libertarian concerns about government overreach and its impact on freedom. The statements primarily comprise opinions and speculations rooted in this ideology, without direct factual claims.
 
