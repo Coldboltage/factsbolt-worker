@@ -680,16 +680,20 @@ export class UtilsService {
     const parserList = new CommaSeparatedListOutputParser();
 
     const chain = RunnableSequence.from([
-      PromptTemplate.fromTemplate(`Begin by analyzing the title for initial context. Delve into the transcription, isolating specific claims, statistics, or notable statements made. Focus on extracting individual claims that are clear, distinct, and verifiable. Assess the potential impact of each claim on the overall narrative or discussion.
+      PromptTemplate.fromTemplate(`Review the title for an overview of the main topic. Analyze the transcription to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and integrate into the overall theme of the discussion.
 
-      For each isolated claim, identify its key elements that need factual verification. Each claim should be examined independently, considering its context, the speaker's intent, and its relevance to the overall subject.
+      For each identified claim, determine the essential elements that require factual verification. Examine the context of each claim within the transcription, noting the speaker's intent and its contribution to the overall argument or narrative.
       
-      Aim to gather comprehensive and current information for each identified claim, utilizing credible and scientific sources. Explore the factual basis of each claim, examining its accuracy, context, and any counterarguments or differing perspectives that exist.
+      Aim to gather comprehensive, current, and credible information for each claim. Investigate the accuracy of each claim, its context, and any opposing viewpoints or alternate perspectives.
       
-      Consider the specific context of each claim, including any relevant legal, ethical, societal, historical, or cultural aspects. This understanding will aid in accurately interpreting and verifying the claims.
+      When formulating your list of questions, ensure each one is presented as a clear, concise, and standalone inquiry. Each question should be self-contained and independent, capable of being understood and answered without reference to the transcript or previous content. In your formulation of these questions, do not use any commas at all.
       
-      Finally, create a list of all identified claims from the transcription. Each claim should be presented as a clear and concise statement, ready for factual verification. This approach ensures a focused and effective exploration of each significant claim made in the transcript, setting the stage for subsequent fact-checking and analysis.
-    
+      Compile a list of questions from the transcription that are focused on factual verification and understanding of individual claims. These questions should provide a clear view of the claims' factual basis and their relationship to the overall narrative, laying the groundwork for focused exploration in subsequent analysis.
+
+      In compiling your questions, focus solely on factual elements that can be verified independently of the speaker's personal claims or experiences. Avoid forming questions that seek confirmation of the speaker's assertions about their own systems or experiences. Instead, concentrate on concrete, objective aspects that can be substantiated through external sources or established facts.
+
+      Additionally, when formulating questions that involve numerical figures, ensure that commas are not used in the representation of numbers. For instance, write numbers like '1580 trillion' instead of '1,580 trillion' to maintain consistency with the instruction of not using commas. This applies to all numerical data in your questions, whether it's financial figures, statistical data, or any other quantifiable information.
+      
       {format_instructions} {title} {transcription}`),
       new OpenAI({
         temperature: 0,
@@ -698,10 +702,12 @@ export class UtilsService {
       parserList,
     ]);
 
-    return await chain.invoke({
+    const test = await chain.invoke({
       transcription: transcriptionJob.text,
       title,
       format_instructions: parserList.getFormatInstructions(),
     });
+    this.logger.verbose(test);
+    return test;
   }
 }

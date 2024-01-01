@@ -4,6 +4,7 @@ import {
   ImATeapotException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -46,6 +47,8 @@ import { DocumentInterface } from '@langchain/core/documents';
 
 @Injectable()
 export class JobsService {
+  private logger = new Logger(JobsService.name);
+
   constructor(
     @Inject('FACTSBOLT_WORKER_SERVICE') private client: ClientProxy,
     private utilsService: UtilsService,
@@ -278,11 +281,17 @@ export class JobsService {
     //   ? await this.transcriptSearchGen(transcriptionJob, title)
     //   : await this.generalTextSearchGen(text, title);
 
-    let searchTerm;
+    let searchTerm = [];
     let searchResultFilter = [];
+
+    const claimCheck = await this.utilsService.getAllClaimsFromTranscript(
+      transcriptionJob,
+      title,
+    );
 
     if (process.env.SEARCH_GOOGLE === 'true') {
       searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
+      searchTerm.push(...claimCheck);
 
       for (const term of searchTerm) {
         let searchResults = await this.utilsService.searchTerm(term);
@@ -331,15 +340,13 @@ export class JobsService {
       baseRetriever: vectorStore.asRetriever(10), // Your existing vector store
     });
 
-    let results: DocumentInterface<Record<string, any>>[];
+    let results: DocumentInterface<Record<string, any>>[] = [];
 
-    const transcriptClaims = await this.utilsService.getAllClaimsFromTranscript(
-      transcriptionJob,
-      title,
-    );
-
-    for (const claim of transcriptClaims) {
-      results.push(...(await vectorStoreRetriever.getRelevantDocuments(claim)));
+    for (const claim of claimCheck) {
+      this.logger.debug(claim);
+      const test = await vectorStoreRetriever.getRelevantDocuments(claim);
+      this.logger.verbose(test);
+      results.push(...test);
     }
 
     // const vectorStoreRetriever = new HydeRetriever({
@@ -547,6 +554,12 @@ export class JobsService {
       Implications and Inferences: Consider the potential implications or inferences that might arise from the statement, especially when it is part of a larger, speculative, or theoretical argument. Even factually accurate statements can be used to support broader claims that may not have the same level of verification.
       Broader Narrative Influence: Assess how the statement influences the broader narrative or theory. Does it serve as a pivotal piece of evidence for a larger claim? Is it used to draw conclusions that extend beyond its direct meaning?
       By applying this universal contextual analysis, the evaluation process becomes more rigorous and reflective of the multifaceted nature of discourse. It ensures that each statement is not only analyzed for its individual accuracy but also for its role and impact within the larger conversation. This approach is particularly important in complex discussions involving historical interpretations, scientific debates, or ideological exchanges, where the interplay between fact, opinion, and theory is intricate and significant.
+
+      Ensure each segment's evaluation takes into account the broader context of the conversation.
+      Highlight how preceding segments influence the statements being analyzed.
+      Reference prior segments when evaluating a statement to show their impact on the speaker's perspective.
+      Maintain consistency in categorizing statements as opinions, facts, or incomplete statements.
+      Provide a comprehensive assessment that includes verifiable facts, opinions, and incomplete statements."
 
       After categorizing and explaining each point, provide an in-depth overall assessment of the content, labelled as overall assessment. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made. State the categories that appeared with regularity
 
