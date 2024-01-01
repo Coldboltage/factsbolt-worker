@@ -4,6 +4,7 @@ import {
   ImATeapotException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateJobDto } from './dto/create-job.dto';
@@ -40,9 +41,14 @@ import weaviate from 'weaviate-ts-client';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
 import { RunnableSequence } from 'langchain/schema/runnable';
 import { AmendedSpeech, JobStatus } from '../utils/utils.types';
+import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
+import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
+import { DocumentInterface } from '@langchain/core/documents';
 
 @Injectable()
 export class JobsService {
+  private logger = new Logger(JobsService.name);
+
   constructor(
     @Inject('FACTSBOLT_WORKER_SERVICE') private client: ClientProxy,
     private utilsService: UtilsService,
@@ -275,11 +281,17 @@ export class JobsService {
     //   ? await this.transcriptSearchGen(transcriptionJob, title)
     //   : await this.generalTextSearchGen(text, title);
 
-    let searchTerm;
+    let searchTerm = [];
     let searchResultFilter = [];
+
+    const claimCheck = await this.utilsService.getAllClaimsFromTranscript(
+      transcriptionJob,
+      title,
+    );
 
     if (process.env.SEARCH_GOOGLE === 'true') {
       searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
+      searchTerm.push(...claimCheck);
 
       for (const term of searchTerm) {
         let searchResults = await this.utilsService.searchTerm(term);
@@ -321,26 +333,66 @@ export class JobsService {
       );
     }
 
-    const vectorStoreRetriever = new HydeRetriever({
-      vectorStore,
-      llm,
-      k: 38,
-      verbose: true,
+    const baseCompressorModel = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-3.5-turbo-1106',
+      // modelName: 'gpt-4-0314',
+      // modelName: 'gpt-3.5-turbo-1106',
     });
 
-    const results = await vectorStoreRetriever.getRelevantDocuments(
-      `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
-    
+    const baseCompressor = LLMChainExtractor.fromLLM(baseCompressorModel);
+
+    const vectorStoreRetriever = new ContextualCompressionRetriever({
+      baseCompressor,
+      baseRetriever: vectorStore.asRetriever(), // Your existing vector store
+    });
+
+    let results: DocumentInterface<Record<string, any>>[] = [];
+
+    for (const claim of claimCheck) {
+      this.logger.debug(claim);
+      const test = await vectorStoreRetriever.getRelevantDocuments(claim);
+      this.logger.verbose(test);
+      results.push(...test);
+    }
+
+    const fullTranscriptClaim = await vectorStoreRetriever.getRelevantDocuments(
+      transcriptionJob.text,
+    );
+    console.log(fullTranscriptClaim);
+
+    results.push(...fullTranscriptClaim);
+
+    const vectorStoreRetrieverHyde = new HydeRetriever({
+      vectorStore,
+      llm: baseCompressorModel,
+      k: 6,
+      verbose: false,
+    });
+
+    const vectorStoreRetrieverHydeCompressor =
+      new ContextualCompressionRetriever({
+        baseCompressor,
+        baseRetriever: vectorStoreRetrieverHyde, // Your existing vector store
+      });
+
+    results.push(
+      ...(await vectorStoreRetrieverHydeCompressor.getRelevantDocuments(
+        `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
+
       Construct search queries that target these identified subjects and claims, with a focus on those deemed more significant. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid the use of special characters like question marks, periods, or non-alphanumeric symbols. The goal is to create queries that delve into the specifics of the situation, giving priority to the most important aspects, such as key individual statements, significant legal proceedings, crucial organizational responses, and vital media coverage.
-    
+
       Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects. Consider the significance of each fact in the context of the transcript and the broader discussion.
-    
+
       Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription, with an emphasis on those of higher priority. This approach ensures a thorough exploration of each significant aspect of the event or issue, with a focus on the most impactful elements.
       Title: ${title},
         Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}
-        
+
         Lastly, please uses sources with this most credibility as priority`,
+      )),
     );
+
+    console.log(results);
 
     // const results = await vectorStoreRetriever.getRelevantDocuments(
     //   `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Focus on extracting these core elements from the transcription, concentrating on the specifics of the situation rather than the speaker's broader perspective or the general context of the discussion.
@@ -366,7 +418,6 @@ export class JobsService {
 
     const result = await chain.call({
       input_documents: fullResults,
-      verbose: true,
       question: `
       Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. 
             
@@ -392,15 +443,15 @@ export class JobsService {
       
       Partially Verified" applies to statements or claims where there is some supporting evidence or credible sources that partially substantiate the claim, albeit not comprehensively. However, this category should be carefully distinguished from speculative assertions. If a statement, despite having some factual basis, leans significantly towards speculation or theoretical interpretation, especially in its overarching implication or conclusion, it should not be classified as 'Partially Verified'. Instead, such statements should be categorized as 'Grounded Speculation' or another more fitting category. 'Partially Verified' is reserved for claims that, while not fully corroborated due to limited evidence, maintain a predominant basis in verifiable facts or credible references, and do not extend into speculative territory beyond what the partial evidence can reasonably support
       
-      Contextually Manipulated Fact: This category is for identifying statements that, while based on verified facts or claims up to April 2023 from credible sources, include elements that could be misleading or taken out of context. When labeling a statement as a 'Contextually Manipulated Fact,' it is crucial to first affirm the overall factual accuracy of the core claim, using training data, documented context, or credible public sources. The analysis should then focus on identifying and explaining specific aspects of the statement that are potentially misleading or misrepresented. This involves discussing which particular elements or phrasings in the statement contribute to a misleading narrative and why they are considered manipulative in the given context. Additionally, it is important to clarify what additional information or perspective is necessary to fully understand these elements and to rectify any misconceptions. The evaluation should also consider the potential utility and harm of these manipulated elements, discussing how they could influence interpretations or decisions in various scenarios. It is equally important to include counterpoints or alternative perspectives that add valuable context to the specific manipulated elements of the fact, especially those supported by training data or other credible sources. The goal is to guide the audience towards an informed understanding by distinguishing between the verified core of the claim and the contextually manipulated aspects of its presentation.
+      Misleading Fact: This category is for identifying statements that, while based on verified facts or claims up to April 2023 from credible sources, include elements that could be misleading or taken out of context. When labeling a statement as a 'Misleading Fact,' it is crucial to first affirm the overall factual accuracy of the core claim, using training data, documented context, or credible public sources. The analysis should then focus on identifying and explaining specific aspects of the statement that are potentially misleading or misrepresented. This involves discussing which particular elements or phrasings in the statement contribute to a misleading narrative and why they are considered manipulative in the given context. Additionally, it is important to clarify what additional information or perspective is necessary to fully understand these elements and to rectify any misconceptions. The evaluation should also consider the potential utility and harm of these manipulated elements, discussing how they could influence interpretations or decisions in various scenarios. It is equally important to include counterpoints or alternative perspectives that add valuable context to the specific manipulated elements of the fact, especially those supported by training data or other credible sources. The goal is to guide the audience towards an informed understanding by distinguishing between the verified core of the claim and the contextually manipulated aspects of its presentation.
 
-      Unverified Claims: Identify statements presented as facts or claims about reality that currently lack verifiable evidence or reliable sources for substantiation. Label these as 'Unverified Claim.' In your analysis, explain why the statement remains unverified, highlighting the limitations of the available resources or search capabilities that might have led to this conclusion. Note that while the claim remains unverified at the moment, it does not necessarily mean it is false — further research or future information could potentially verify it. Discuss the potential implications of the claim, including how it might be used or misused in different contexts if accepted without verification, and encourage the audience to consider the claim with a critical perspective, acknowledging the current limitations in verifying its accuracy. Anecdotal claims should be included here. Additionally, for a claim to move from 'unverified' to 'verified,' comprehensive and specific data or evidence directly relevant to the claim would be required, demonstrating its factual basis or falsity.
+      Unverified Claims: Identify statements presented as facts or claims about reality that currently lack verifiable evidence or reliable sources for substantiation. Label these as 'Unverified Claim.' In your analysis, explain why the statement remains unverified, highlighting the limitations of the available resources or search capabilities that might have led to this conclusion. Note that while the claim remains unverified at the moment, it does not necessarily mean it is false — further research or future information could potentially verify it. Discuss the potential implications of the claim, including how it might be used or misused in different contexts if accepted without verification, and encourage the audience to consider the claim with a critical perspective, acknowledging the current limitations in verifying its accuracy.
 
       Factually Incorrect: This category applies to statements, claims, opinions, or speculations that either directly contradict current, well-established knowledge and empirical evidence, or represent a significant misunderstanding or misrepresentation of such knowledge. This includes not only statements that are demonstrably false but also those that, while possibly grounded in personal experience or belief, are at odds with established scientific consensus or factual understanding. The key aspect of this category is the presence of a clear conflict between the statement and established facts or scientific understanding, regardless of whether the statement is framed as a personal belief or experience.
 
-      Factually Unsubstantiated Opinion: This category is for opinions that lack a basis in verified facts or empirical evidence. These opinions may not necessarily be in direct conflict with established facts (like flat earth theories would be), but they also do not align with or are supported by current empirical knowledge. This category helps to differentiate opinions that are not inherently harmful or manipulative but are also not supported by factual evidence.
+      Unsupported Opinion: This category is for opinions that lack a basis in verified facts or empirical evidence. These opinions may not necessarily be in direct conflict with established facts (like flat earth theories would be), but they also do not align with or are supported by current empirical knowledge. This category helps to differentiate opinions that are not inherently harmful or manipulative but are also not supported by factual evidence.
 
-      Principled Opinion: This category is for opinions that align with established principles, recognized wisdom, or general best practices in a particular field, even if they are not explicitly supported by specific empirical data in the statement. These opinions reflect a general understanding or acceptance of certain concepts that are widely regarded as effective or true based on collective experience or consensus, rather than on direct empirical evidence.
+      Well-Founded Opinion: This category is for opinions that align with established principles, recognized wisdom, or general best practices in a particular field, even if they are not explicitly supported by specific empirical data in the statement. These opinions reflect a general understanding or acceptance of certain concepts that are widely regarded as effective or true based on collective experience or consensus, rather than on direct empirical evidence.
       
       Fundamentally Confirmed: This categorization applies to statements where the core idea or principal assertion is validated through credible and independent sources, as per the latest known data, including training data up to April 2023. The term 'Fundamentally Confirmed' specifically highlights that the foundational aspect of the claim is verified and factual. However, it simultaneously brings attention to the fact that certain details, specific methods, or subsidiary elements within the claim have not been verified or may remain inconclusive. This classification is designed to explicitly differentiate between the aspects of the claim that are substantiated and those that are not, thereby providing a clear understanding of the extent of verification. The aim is to affirm the verified truth of the central claim while maintaining transparency about the unverified status of specific details, ensuring an informed and nuanced understanding of the claim's overall veracity.
 
@@ -471,14 +522,14 @@ export class JobsService {
 
       Speaker: Financial Novice
       Text: "I don't know about stocks and shares."
-      Category: Factually Unsubstantiated Opinion
+      Category: Unsupported Opinion
       Explanation: The speaker expresses a personal lack of knowledge about stocks and shares, categorizing this as an opinion rather than a verified fact.
       Source Verification: N/A
       Segment 2 - Investment Guide: Recommending Strategies
 
       Speaker: Investment Guide
       Text: "Invest in a diversified portfolio for long-term growth."
-      Category: Principled Opinion
+      Category: Well-Founded Opinion
       Explanation: The speaker offers investment advice based on common financial principles, suggesting a strategy widely recognized as effective for long-term growth.
       Source Verification: Supported by financial literature and expert advice.
 
@@ -499,7 +550,7 @@ export class JobsService {
 
       This directive aims to ensure a thorough and nuanced categorization process, reducing the likelihood of misclassification and enhancing the overall accuracy and depth of the analysis.
 
-      Break down these statements into individual points or closely related sentences to understand the nuances, but regularly refer back to the broader conversation to ensure that each point is evaluated within its proper context. This approach aims to provide a thorough dissection of each statement while preserving the interconnectedness and flow of the conversation. By doing this, the evaluation will be more balanced, acknowledging both the specific details of individual statements and their meaning within the larger dialogue. For each point, identify it as either a Verified Fact, Partially  Verified, Grounded Speculation, Baseless Speculation, Baseless Opinion, Direct Response, Manipulative Opinion, Manipulative Speculation, Contextually Manipulated Fact, Factually Incorrect, Question, Moral Disgust Expression, Unelaborated Disagreement, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization. In addition to contextual analysis, please ensure to assess the factual accuracy of each statement, taking into account established scientific knowledge and empirical evidence when applicable.
+      Break down these statements into individual points or closely related sentences to understand the nuances, but regularly refer back to the broader conversation to ensure that each point is evaluated within its proper context. This approach aims to provide a thorough dissection of each statement while preserving the interconnectedness and flow of the conversation. By doing this, the evaluation will be more balanced, acknowledging both the specific details of individual statements and their meaning within the larger dialogue. For each point, identify it as either a Verified Fact, Partially  Verified, Grounded Speculation, Baseless Speculation, Baseless Opinion, Direct Response, Manipulative Opinion, Manipulative Speculation, Misleading Fact, Factually Incorrect, Question, Moral Disgust Expression, Unelaborated Disagreement, or Incomplete Statement. Consider the context in which the statement is made to ensure accurate categorization. In addition to contextual analysis, please ensure to assess the factual accuracy of each statement, taking into account established scientific knowledge and empirical evidence when applicable.
 
       When evaluating each statement within the provided documents/context, conduct a meticulous assessment of each source's credibility. This evaluation should include an in-depth examination of the author's expertise and qualifications, the source's history of accuracy and reliability, any potential biases or agendas, and the timeliness and relevance of the information presented. Cross-reference facts with multiple reputable sources, prioritizing primary sources and recognized authorities in the field. In cases of conflicting information, seek additional corroborative sources to discern the most robustly supported viewpoint. Document each step of this evaluation process, providing explicit justifications for the credibility assigned to each source. Regularly update and review source credibility, especially for ongoing analyses, to ensure the most current and accurate information is being utilized. This rigorous approach to source evaluation is crucial to ensure that the analysis is grounded not only in factual accuracy but also in the reliability and integrity of the information's origin.
 
@@ -526,6 +577,30 @@ export class JobsService {
       Implications and Inferences: Consider the potential implications or inferences that might arise from the statement, especially when it is part of a larger, speculative, or theoretical argument. Even factually accurate statements can be used to support broader claims that may not have the same level of verification.
       Broader Narrative Influence: Assess how the statement influences the broader narrative or theory. Does it serve as a pivotal piece of evidence for a larger claim? Is it used to draw conclusions that extend beyond its direct meaning?
       By applying this universal contextual analysis, the evaluation process becomes more rigorous and reflective of the multifaceted nature of discourse. It ensures that each statement is not only analyzed for its individual accuracy but also for its role and impact within the larger conversation. This approach is particularly important in complex discussions involving historical interpretations, scientific debates, or ideological exchanges, where the interplay between fact, opinion, and theory is intricate and significant.
+
+      Ensure each segment's evaluation takes into account the broader context of the conversation.
+      Highlight how preceding segments influence the statements being analyzed.
+      Reference prior segments when evaluating a statement to show their impact on the speaker's perspective.
+      Maintain consistency in categorizing statements as opinions, facts, or incomplete statements.
+      Provide a comprehensive assessment that includes verifiable facts, opinions, and incomplete statements."
+
+      Incorporating Documents/Context into Analysis Process:
+
+      Ensure Documents/Context-Centric Verification: Actively cross-reference each segment against the information provided in the Documents/Context. Explicitly mention how the documents corroborate, contradict, or enhance the understanding of the statement being analyzed.
+
+      Make Explicit Citations: Include direct references or citations from the Documents/Context in your explanations. This provides clarity on how the Documents/Context influenced the categorization and supports the analytical process.
+
+      Assess Contextual Relevance: Evaluate the broader context given by the Documents/Context and consider how this context affects the interpretation of the statement. Determine if it provides additional insights or challenges the initial understanding.
+
+      Balance Document Evidence with Other Credible Sources: While Documents/Context are key, balance their information with other credible sources, particularly for verified facts. This approach ensures a well-rounded analysis.
+
+      Address Document Limitations: If there are any limitations in the Documents/Context related to scope, recency, or detail, acknowledge these in your analysis. Understanding these limitations is crucial for the categorization process.
+
+      Regularly Update and Review Analysis: Keep the analysis current by regularly reviewing and updating the credibility of the sources, especially for ongoing analyses.
+
+      Incorporate Diverse Perspectives: Make sure the Documents/Context are not the sole source of perspective. When relevant, include other viewpoints or interpretations to gain a more holistic understanding of the statement.
+
+      By adhering to these steps, you ensure that each segment's evaluation is deeply informed by the Documents/Context and context provided, leading to a more accurate and comprehensive analysis.
 
       After categorizing and explaining each point, provide an in-depth overall assessment of the content, labelled as overall assessment. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made. State the categories that appeared with regularity
 
@@ -602,7 +677,7 @@ export class JobsService {
         ManipulativeOpinion = "Manipulative Opinion"
         BaselessOpinion = "Baseless Opinion",
         VerifiedFact = "Verified Fact",
-        ContextuallyManipulatedFact = "Contextually Manipulated Fact",
+        MisleadingFact = "Misleading Fact",
         UnverifiedClaims = "Unverified Claims",
         GroundedSpeculation = "Grounded Speculation",
         ManipulativeSpeculation = "Manipulative Speculation",
