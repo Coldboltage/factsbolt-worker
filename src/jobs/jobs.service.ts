@@ -623,9 +623,6 @@ export class JobsService {
       Labelled, Contextual Conclusion: Summarize the overall context in which facts, opinions, and speculations are presented in the transcript. Explicitly flag and highlight any recurring themes of contextual manipulation, misleading presentation, or instances where and speculations are used manipulatively. Assess the broader implications of these contextual issues on the validity of the speaker's arguments, the potential impact on public perception, and any attempts to steer the narrative away from the truth. This conclusion should guide the reader in understanding the practicality, reliability, and applicability of the content, especially in the context of any manipulative tactics identified.
 
       Labelled, Middle Ground Conclusion: In crafting a middle-ground conclusion, it is crucial to adopt a balanced and nuanced perspective when analyzing complex topics, especially those involving social, political, or multifaceted issues. The middle ground represents a viewpoint that strives to find common ground among differing opinions and takes into account the following key principles:
-
-      Balanced Understanding of Complexities:
-      Begin by thoroughly unpacking the complexities of the issue at hand. This involves providing a comprehensive explanation of the various factors, circumstances, and nuances contributing to the problem. Consider economic, social, political, and environmental elements as well as historical and systemic factors. Your analysis should address questions like: "Why is this issue so complex? What are the multiple factors influencing it?"
       
       Recognition of Specific Efforts and Progress:
       Identify and describe the specific efforts, policies, initiatives, or actions that have been undertaken to address the issue. Evaluate the effectiveness of these efforts by detailing the progress achieved in specific areas. Explore the question: "What specific actions have been taken to tackle the problem, and where has progress been made?"
@@ -642,6 +639,17 @@ export class JobsService {
       A middle-ground conclusion aims to provide a balanced and comprehensive perspective on the issue, taking into account its complexities and recognizing both successes and challenges in addressing it.
 
       Note: In all sections labeled as 'Assessment,' 'Conclusion,' or any variations thereof—both present and those that may be added in the future—please provide a highly detailed and verbose response. These designated sections are intended to yield a comprehensive and nuanced understanding of the topic. Conciseness is acceptable for other sections not falling under these categories.
+
+      Labeled, Main Claim:
+      Summarize Main Claim, the main claim discussed in the transcript is that using the 'sole prop strategy' to apply for business credit cards without actually owning a business and providing false information is a form of fraud.
+      Selected Category: Verified Fact
+      Rationale for Category Selection: This claim is classified as a Verified Fact because it aligns with established legal principles regarding fraud and the provision of false information in credit applications. The claim is supported by legal standards and ethical practices in finance, as corroborated by the provided documents and training data.
+
+      Selected Category: [Select the most appropriate category from the Category enum based on all information and context analyzed previously.]
+      
+      Rationale for Category Selection: [Offer a brief explanation that outlines why this category is chosen. This explanation should be based on the insights and evidence gathered from the detailed analysis of the transcript and the supporting documents. Consider any significant points, legal implications, ethical concerns, and factual accuracies or inaccuracies highlighted during the analysis.]
+      Balanced Understanding of Complexities:
+      Begin by thoroughly unpacking the complexities of the issue at hand. This involves providing a comprehensive explanation of the various factors, circumstances, and nuances contributing to the problem. Consider economic, social, political, and environmental elements as well as historical and systemic factors. Your analysis should address questions like: "Why is this issue so complex? What are the multiple factors influencing it?"
 
       Labelled, Resources, then, provide a list of resources or facts that offer greater context and insight into the broader issue. Ensure these resources come from credible and respected origins, are recognized for their sound advice and dependability across the relevant community, have stood the test of scrutiny and critical examination, are penned by authors without significant controversies in their background, and where feasible, include direct links for further exploration. Recommendations should lean towards sources with broad consensus, steering clear of those with mixed or contentious opinions.
 
@@ -701,6 +709,7 @@ export class JobsService {
         democraticConclusion: string;
         contextualConclusion: string;
         middlegroundConclusion: string;
+        mainClaim: mainClaims;
         furtherResources: string[] // with link
       }
 
@@ -737,6 +746,7 @@ export class JobsService {
       democraticConclusion: 'extract the democratic conclusion section',
       contextualConclusion: 'extract the contextual conclusion section',
       middlegroundConclusion: 'extract the middleground conclusion section',
+      mainClaimConclusion: 'extract the main claim section',
     });
 
     const formatInstructions = parser.getFormatInstructions();
@@ -919,7 +929,7 @@ export class JobsService {
 
     const promptMainClaim = new PromptTemplate({
       template: `
-      Succinctly state the main claim within a 16-word limit, capturing its essence as supported by the provided transcript/text and any relevant documents/context
+      Succinctly state the main claim within a 16-word limit, capturing its essence as supported by the provided transcript/text and any relevant documents/context, labelled as query.
       
       {format_instructions} {title} {transcription}`,
       inputVariables: ['transcription', 'title'],
