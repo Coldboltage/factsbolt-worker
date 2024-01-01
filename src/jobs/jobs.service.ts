@@ -746,6 +746,7 @@ export class JobsService {
       democraticConclusion: 'extract the democratic conclusion section',
       contextualConclusion: 'extract the contextual conclusion section',
       middlegroundConclusion: 'extract the middleground conclusion section',
+      mainClaimConclusion: 'extract the main claim section',
     });
 
     const formatInstructions = parser.getFormatInstructions();
