@@ -333,11 +333,18 @@ export class JobsService {
       );
     }
 
-    const baseCompressor = LLMChainExtractor.fromLLM(model);
+    const baseCompressorModel = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-3.5-turbo-1106',
+      // modelName: 'gpt-4-0314',
+      // modelName: 'gpt-3.5-turbo-1106',
+    });
+
+    const baseCompressor = LLMChainExtractor.fromLLM(baseCompressorModel);
 
     const vectorStoreRetriever = new ContextualCompressionRetriever({
       baseCompressor,
-      baseRetriever: vectorStore.asRetriever(10), // Your existing vector store
+      baseRetriever: vectorStore.asRetriever(), // Your existing vector store
     });
 
     let results: DocumentInterface<Record<string, any>>[] = [];
@@ -348,6 +355,13 @@ export class JobsService {
       this.logger.verbose(test);
       results.push(...test);
     }
+
+    const fullTranscriptClaim = await vectorStoreRetriever.getRelevantDocuments(
+      transcriptionJob.text,
+    );
+    console.log(fullTranscriptClaim);
+
+    results.push(...fullTranscriptClaim);
 
     // const vectorStoreRetriever = new HydeRetriever({
     //   vectorStore,
@@ -422,13 +436,13 @@ export class JobsService {
       
       Misleading Fact: This category is for identifying statements that, while based on verified facts or claims up to April 2023 from credible sources, include elements that could be misleading or taken out of context. When labeling a statement as a 'Misleading Fact,' it is crucial to first affirm the overall factual accuracy of the core claim, using training data, documented context, or credible public sources. The analysis should then focus on identifying and explaining specific aspects of the statement that are potentially misleading or misrepresented. This involves discussing which particular elements or phrasings in the statement contribute to a misleading narrative and why they are considered manipulative in the given context. Additionally, it is important to clarify what additional information or perspective is necessary to fully understand these elements and to rectify any misconceptions. The evaluation should also consider the potential utility and harm of these manipulated elements, discussing how they could influence interpretations or decisions in various scenarios. It is equally important to include counterpoints or alternative perspectives that add valuable context to the specific manipulated elements of the fact, especially those supported by training data or other credible sources. The goal is to guide the audience towards an informed understanding by distinguishing between the verified core of the claim and the contextually manipulated aspects of its presentation.
 
-      Unverified Claims: Identify statements presented as facts or claims about reality that currently lack verifiable evidence or reliable sources for substantiation. Label these as 'Unverified Claim.' In your analysis, explain why the statement remains unverified, highlighting the limitations of the available resources or search capabilities that might have led to this conclusion. Note that while the claim remains unverified at the moment, it does not necessarily mean it is false — further research or future information could potentially verify it. Discuss the potential implications of the claim, including how it might be used or misused in different contexts if accepted without verification, and encourage the audience to consider the claim with a critical perspective, acknowledging the current limitations in verifying its accuracy. Anecdotal claims should be included here. Additionally, for a claim to move from 'unverified' to 'verified,' comprehensive and specific data or evidence directly relevant to the claim would be required, demonstrating its factual basis or falsity.
+      Unverified Claims: Identify statements presented as facts or claims about reality that currently lack verifiable evidence or reliable sources for substantiation. Label these as 'Unverified Claim.' In your analysis, explain why the statement remains unverified, highlighting the limitations of the available resources or search capabilities that might have led to this conclusion. Note that while the claim remains unverified at the moment, it does not necessarily mean it is false — further research or future information could potentially verify it. Discuss the potential implications of the claim, including how it might be used or misused in different contexts if accepted without verification, and encourage the audience to consider the claim with a critical perspective, acknowledging the current limitations in verifying its accuracy.
 
       Factually Incorrect: This category applies to statements, claims, opinions, or speculations that either directly contradict current, well-established knowledge and empirical evidence, or represent a significant misunderstanding or misrepresentation of such knowledge. This includes not only statements that are demonstrably false but also those that, while possibly grounded in personal experience or belief, are at odds with established scientific consensus or factual understanding. The key aspect of this category is the presence of a clear conflict between the statement and established facts or scientific understanding, regardless of whether the statement is framed as a personal belief or experience.
 
       Unsupported Opinion: This category is for opinions that lack a basis in verified facts or empirical evidence. These opinions may not necessarily be in direct conflict with established facts (like flat earth theories would be), but they also do not align with or are supported by current empirical knowledge. This category helps to differentiate opinions that are not inherently harmful or manipulative but are also not supported by factual evidence.
 
-      Principled Opinion: This category is for opinions that align with established principles, recognized wisdom, or general best practices in a particular field, even if they are not explicitly supported by specific empirical data in the statement. These opinions reflect a general understanding or acceptance of certain concepts that are widely regarded as effective or true based on collective experience or consensus, rather than on direct empirical evidence.
+      Well-Founded Opinion: This category is for opinions that align with established principles, recognized wisdom, or general best practices in a particular field, even if they are not explicitly supported by specific empirical data in the statement. These opinions reflect a general understanding or acceptance of certain concepts that are widely regarded as effective or true based on collective experience or consensus, rather than on direct empirical evidence.
       
       Fundamentally Confirmed: This categorization applies to statements where the core idea or principal assertion is validated through credible and independent sources, as per the latest known data, including training data up to April 2023. The term 'Fundamentally Confirmed' specifically highlights that the foundational aspect of the claim is verified and factual. However, it simultaneously brings attention to the fact that certain details, specific methods, or subsidiary elements within the claim have not been verified or may remain inconclusive. This classification is designed to explicitly differentiate between the aspects of the claim that are substantiated and those that are not, thereby providing a clear understanding of the extent of verification. The aim is to affirm the verified truth of the central claim while maintaining transparency about the unverified status of specific details, ensuring an informed and nuanced understanding of the claim's overall veracity.
 
@@ -506,7 +520,7 @@ export class JobsService {
 
       Speaker: Investment Guide
       Text: "Invest in a diversified portfolio for long-term growth."
-      Category: Principled Opinion
+      Category: Well-Founded Opinion
       Explanation: The speaker offers investment advice based on common financial principles, suggesting a strategy widely recognized as effective for long-term growth.
       Source Verification: Supported by financial literature and expert advice.
 
@@ -560,6 +574,16 @@ export class JobsService {
       Reference prior segments when evaluating a statement to show their impact on the speaker's perspective.
       Maintain consistency in categorizing statements as opinions, facts, or incomplete statements.
       Provide a comprehensive assessment that includes verifiable facts, opinions, and incomplete statements."
+
+      Prioritize Documents/Context: Use provided documents/context as additional sources for verifying each segment. Adjust categories based on these documents/context.
+
+      Structured Analysis with References: Reference specific documents/context when categorizing each segment, detailing how they support or contradict the claims.
+
+      Document/Context-Centric Verification: Cross-reference statements with provided documents/context for verification. Adjust categories based on document evidence.
+
+      Continuous Document/Context Reference: Consistently refer to the documents/context throughout the analysis for accurate evaluation.
+
+      Flexibility in Categorization: Be open to adjusting segment categorizations based on documents/context findings.
 
       After categorizing and explaining each point, provide an in-depth overall assessment of the content, labelled as overall assessment. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made. State the categories that appeared with regularity
 

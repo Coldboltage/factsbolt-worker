@@ -63,13 +63,17 @@ export class UtilsService {
 
     if (!data.organic_results) return siteLinks;
 
+    let counter = 0;
+
     for (const siteResult of data.organic_results) {
+      if (counter === 3) continue;
       const siteInfo = {
         ...siteResult,
         url: siteResult.link,
       };
       delete siteInfo.link;
       siteLinks.push(siteInfo);
+      counter++;
     }
     return siteLinks;
   }
