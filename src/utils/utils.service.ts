@@ -147,18 +147,8 @@ export class UtilsService {
 
       // Invoking is the bottle neck learn what this is.
 
-      const invoke = () =>
-        Promise.race([
-          new Promise((_, reject) =>
-            // timeout after 10 seconds
-            setTimeout(() => reject(new Error('timed out')), 10000),
-          ),
-          sequence.invoke(docs),
-        ]);
-
       try {
-        // newDocuments = await sequence.invoke(docs);
-        newDocuments = await invoke();
+        newDocuments = await sequence.invoke(docs);
       } catch (error) {
         console.log('invoke broke');
         continue;
