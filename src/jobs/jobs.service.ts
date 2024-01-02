@@ -293,15 +293,30 @@ export class JobsService {
       searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
       searchTerm.push(...claimCheck);
 
-      for (const term of searchTerm) {
-        let searchResults = await this.utilsService.searchTerm(term);
-        const currentSearchResultFilter =
-          this.utilsService.extractURLs(searchResults);
-        searchResultFilter = [
-          ...searchResultFilter,
-          ...currentSearchResultFilter,
-        ];
-      }
+      // const searchTermToUrl = async (term: string) => {
+      //   let searchResults = await this.utilsService.searchTerm(term);
+      //   const currentSearchResultFilter =
+      //     this.utilsService.extractURLs(searchResults);
+      //   searchResultFilter = [
+      //     ...searchResultFilter,
+      //     ...currentSearchResultFilter,
+      //   ];
+      // };
+
+      // for (const term of searchTerm) {
+      //   let searchResults = await this.utilsService.searchTerm(term);
+      //   const currentSearchResultFilter =
+      //     this.utilsService.extractURLs(searchResults);
+      //   searchResultFilter = [
+      //     ...searchResultFilter,
+      //     ...currentSearchResultFilter,
+      //   ];
+      // }
+
+      searchResultFilter = await this.utilsService.processSearchTermsRxJS(
+        searchTerm,
+        5,
+      );
     }
 
     // let searchResultFilter = this.utilsService.extractURLs(searchResults);
