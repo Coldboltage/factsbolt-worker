@@ -641,13 +641,12 @@ export class JobsService {
       Note: In all sections labeled as 'Assessment,' 'Conclusion,' or any variations thereof—both present and those that may be added in the future—please provide a highly detailed and verbose response. These designated sections are intended to yield a comprehensive and nuanced understanding of the topic. Conciseness is acceptable for other sections not falling under these categories.
 
       Labeled, Main Claim:
-      Summarize Main Claim, the main claim discussed in the transcript is that using the 'sole prop strategy' to apply for business credit cards without actually owning a business and providing false information is a form of fraud.
-      Selected Category: Verified Fact
-      Rationale for Category Selection: This claim is classified as a Verified Fact because it aligns with established legal principles regarding fraud and the provision of false information in credit applications. The claim is supported by legal standards and ethical practices in finance, as corroborated by the provided documents and training data.
+      Summarized Main Claim: [Provide a concise summary, ideally within 32 words, that captures the essence of the main claim discussed in the transcript.]
 
       Selected Category: [Select the most appropriate category from the Category enum based on all information and context analyzed previously.]
       
       Rationale for Category Selection: [Offer a brief explanation that outlines why this category is chosen. This explanation should be based on the insights and evidence gathered from the detailed analysis of the transcript and the supporting documents. Consider any significant points, legal implications, ethical concerns, and factual accuracies or inaccuracies highlighted during the analysis.]
+
       Balanced Understanding of Complexities:
       Begin by thoroughly unpacking the complexities of the issue at hand. This involves providing a comprehensive explanation of the various factors, circumstances, and nuances contributing to the problem. Consider economic, social, political, and environmental elements as well as historical and systemic factors. Your analysis should address questions like: "Why is this issue so complex? What are the multiple factors influencing it?"
 
