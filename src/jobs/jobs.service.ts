@@ -44,6 +44,7 @@ import { AmendedSpeech, JobStatus } from '../utils/utils.types';
 import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
 import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
 import { DocumentInterface } from '@langchain/core/documents';
+import { z } from 'zod';
 
 @Injectable()
 export class JobsService {
@@ -371,10 +372,20 @@ export class JobsService {
       results.push(...test);
     }
 
-    const fullTranscriptClaim = await vectorStoreRetriever.getRelevantDocuments(
-      transcriptionJob.text,
+    const testModel = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-3.5-turbo-1106',
+      // modelName: 'gpt-4-0314',
+      // modelName: 'gpt-3.5-turbo-1106',
+    });
+
+    const mainClaimQuick = await testModel.invoke(
+      `Direct Summary: ${transcriptionJob.text}`,
     );
-    console.log(fullTranscriptClaim);
+
+    const fullTranscriptClaim = await vectorStoreRetriever.getRelevantDocuments(
+      mainClaimQuick,
+    );
 
     results.push(...fullTranscriptClaim);
 
@@ -384,12 +395,6 @@ export class JobsService {
       k: 6,
       verbose: false,
     });
-
-    const vectorStoreRetrieverHydeCompressor =
-      new ContextualCompressionRetriever({
-        baseCompressor,
-        baseRetriever: vectorStoreRetrieverHyde, // Your existing vector store
-      });
 
     const hydeResponse = await vectorStoreRetrieverHyde.getRelevantDocuments(
       `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
@@ -656,16 +661,15 @@ export class JobsService {
       Note: In all sections labeled as 'Assessment,' 'Conclusion,' or any variations thereof—both present and those that may be added in the future—please provide a highly detailed and verbose response. These designated sections are intended to yield a comprehensive and nuanced understanding of the topic. Conciseness is acceptable for other sections not falling under these categories.
 
       Labeled, Main Claim:
+
       Summarized Main Claim: [Provide a concise summary, ideally within 32 words, that captures the essence of the main claim discussed in the transcript.]
 
-      Selected Category: [Select the most appropriate category from the Category enum based on all information and context analyzed previously.]
-      
-      Rationale for Category Selection: [Offer a brief explanation that outlines why this category is chosen. This explanation should be based on the insights and evidence gathered from the detailed analysis of the transcript and the supporting documents. Consider any significant points, legal implications, ethical concerns, and factual accuracies or inaccuracies highlighted during the analysis.]
+      Selected Category: [Select the most appropriate category from the Category enum based on all information and context analyzed previously, with special emphasis on distinguishing between the main claim's validity and the argumentation pathway used to reach it.]
 
-      Balanced Understanding of Complexities:
-      Begin by thoroughly unpacking the complexities of the issue at hand. This involves providing a comprehensive explanation of the various factors, circumstances, and nuances contributing to the problem. Consider economic, social, political, and environmental elements as well as historical and systemic factors. Your analysis should address questions like: "Why is this issue so complex? What are the multiple factors influencing it?"
+      Rationale for Category Selection: [Offer a brief explanation that outlines why this category is chosen. This explanation should be grounded in the insights and evidence gathered from the detailed analysis of the transcript and the supporting documents. It should consider any significant points, legal implications, ethical concerns, factual accuracies or inaccuracies, and the distinction between the soundness of the main claim and the methodology or reasoning used to arrive at it.]
 
-      Labelled, Resources, then, provide a list of resources or facts that offer greater context and insight into the broader issue. Ensure these resources come from credible and respected origins, are recognized for their sound advice and dependability across the relevant community, have stood the test of scrutiny and critical examination, are penned by authors without significant controversies in their background, and where feasible, include direct links for further exploration. Recommendations should lean towards sources with broad consensus, steering clear of those with mixed or contentious opinions.
+      [Discuss the approach and methodology used by the speaker to arrive at the main claim, highlighting the strengths and weaknesses in the argumentation, including the use of anecdotes, generalizations, and empirical data.]
+      [Provide a comprehensive understanding of the complexities of the issue, considering economic, social, political, environmental elements, as well as historical and systemic factors. Analyze the complexity of the issue, addressing questions like: "Why is this issue so complex? What are the multiple factors influencing it?"]
 
       Each major statement should be analyzed separately, maintaining a structured and thorough approach throughout the analysis.
 
@@ -928,9 +932,6 @@ export class JobsService {
     // const model = new OpenAI({ temperature: 0 });
 
     const response = await model.call(input);
-    console.log(input);
-    console.log(response);
-
     const parsed = await parser.parse(response);
 
     console.log(parsed);
