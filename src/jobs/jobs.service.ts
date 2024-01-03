@@ -899,45 +899,47 @@ export class JobsService {
     transcriptionJob: TranscriptionJob,
     title: string,
   ): Promise<string[]> {
-    const parser = StructuredOutputParser.fromNamesAndDescriptions({
-      query: 'extract the query',
-    });
+    // const parser = StructuredOutputParser.fromNamesAndDescriptions({
+    //   query: 'extract the query',
+    // });
 
-    const formatInstructions = parser.getFormatInstructions();
+    // We can use zod to define a schema for the output using the `fromZodSchema` method of `StructuredOutputParser`.
+    const parser = StructuredOutputParser.fromZodSchema(
+      z.object({
+        answer: z.string().describe('Copy the query string made'),
+      }),
+    );
 
-    const prompt = new PromptTemplate({
-      template: `
-      Begin by analyzing the title for initial context. Delve into the transcription, identifying key subjects, specific claims, statistics, or notable statements. Focus on extracting these core elements from the transcription, rather than the speaker's broader perspective or the general context of the discussion.
-      
-      Construct a search query that specifically targets the amalgamation of these identified subjects and claims. Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their scientific, psychological, and societal aspects.
-      
-      When formulating your query, ensure it is precise and succinct, ideally limited to 32 words. Avoid the use of special characters like question marks, periods, or any non-alphanumeric symbols. The goal is to create a query that directly delves into the subjects themselves, such as understanding 'depression' in a broader sense when mentioned, rather than focusing on the speaker's perspective or the mere fact that the subject was discussed.
-      
-      Finally, from this analysis, create one comprehensive search query that encompasses all key subjects or claims identified in the transcription.. {format_instructions} {title} {transcription}`,
-      inputVariables: ['transcription', 'title'],
-      partialVariables: { format_instructions: formatInstructions },
-    });
+    const transcriptChain = RunnableSequence.from([
+      PromptTemplate.fromTemplate(
+        `Begin by analyzing the title for initial context. Delve into the transcription, identifying key subjects, specific claims, statistics, or notable statements. Focus on extracting these core elements from the transcription, rather than the speaker's broader perspective or the general context of the discussion.
+        
+        Construct a search query that specifically targets the amalgamation of these identified subjects and claims. Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their scientific, psychological, and societal aspects.
+        
+        When formulating your query, ensure it is precise and succinct, ideally limited to 32 words. Avoid the use of special characters like question marks, periods, or any non-alphanumeric symbols. The goal is to create a query that directly delves into the subjects themselves, such as understanding 'depression' in a broader sense when mentioned, rather than focusing on the speaker's perspective or the mere fact that the subject was discussed.
+        
+        Finally, from this analysis, create one comprehensive search query string, that encompasses all key subjects or claims identified in the transcription. {format_instructions} {title} {transcription}`,
+      ),
+      new OpenAI({ temperature: 0, modelName: 'gpt-4-1106-preview' }),
+      parser,
+    ]);
 
-    const input = await prompt.format({
-      transcription: transcriptionJob.text,
-      title,
-    });
+    let parsed;
 
-    // const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
-    const model = new OpenAI({
-      temperature: 0,
-      modelName: 'gpt-4-1106-preview',
-    });
-
-    // const model = new OpenAI({ temperature: 0 });
-
-    const response = await model.call(input);
-    const parsed = await parser.parse(response);
+    try {
+      parsed = await transcriptChain.invoke({
+        format_instructions: parser.getFormatInstructions(),
+        title,
+        transcription: transcriptionJob.text,
+      });
+    } catch (error) {
+      console.log(error);
+    }
 
     console.log(parsed);
 
     const parserMainClaim = StructuredOutputParser.fromNamesAndDescriptions({
-      query: 'extract the query',
+      query: 'extract the query property',
     });
 
     const formatInstructionsMainClaim = parserMainClaim.getFormatInstructions();
@@ -999,8 +1001,12 @@ export class JobsService {
       format_instructions: parserList.getFormatInstructions(),
     });
 
-    responseList.push(parsed.query);
-    responseList.push(parsedMainClaim.query);
+    if (parsed) {
+      responseList.push(parsed.answer);
+    }
+    if (parsedMainClaim) {
+      responseList.push(parsedMainClaim.query);
+    }
     console.log(Array.from(new Set(responseList)));
     console.log(responseList.length);
     return Array.from(new Set(responseList));
