@@ -17,6 +17,7 @@ import { AmendedSpeech, TranscriptionJob } from './utils.types';
 import { OpenAI } from 'langchain/llms/openai';
 import { CommaSeparatedListOutputParser } from 'langchain/output_parsers';
 import { RunnableSequence } from 'langchain/schema/runnable';
+import { from, mergeMap, concatAll, toArray, lastValueFrom } from 'rxjs';
 const path = require('path');
 const youtubedl = require('youtube-dl-exec');
 const stripchar = require('stripchar').StripChar;
@@ -705,5 +706,23 @@ export class UtilsService {
     });
     this.logger.verbose(test);
     return test;
+  }
+
+  async searchTermToUrl(term: string) {
+    let searchResults = await this.searchTerm(term);
+    return this.extractURLs(searchResults);
+  }
+
+  async processSearchTermsRxJS(
+    searchTerms: string[],
+    concurrencyLimit: number,
+  ): Promise<string[]> {
+    const searchTermObservable = from(searchTerms).pipe(
+      mergeMap((term) => this.searchTermToUrl(term), concurrencyLimit),
+      concatAll(),
+      toArray(),
+    );
+
+    return lastValueFrom(searchTermObservable);
   }
 }
