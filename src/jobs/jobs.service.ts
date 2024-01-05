@@ -662,14 +662,15 @@ export class JobsService {
 
       Labeled, Main Claim:
 
-      Summarized Main Claim: [Provide a concise summary, ideally within 32 words, that captures the essence of the main claim discussed in the transcript.]
+      Summarized Main Claim: [To succinctly summarize the main claim discussed in the transcript, consider the central theme or argument that emerges from the conversation, taking into account the various perspectives and counterpoints presented. Focus on the primary contention or debate, distilling it into no more than 32 words. This summary should reflect the essence of the discussion, highlighting the key issue or dispute around which the conversation revolves, and acknowledging the context in which different claims are made.]
 
-      Selected Category: [Select the most appropriate category from the Category enum based on all information and context analyzed previously, with special emphasis on distinguishing between the main claim's validity and the argumentation pathway used to reach it.]
+      Selected Category: [Select the most appropriate category for the main claim from the provided Category enum. This selection should be based on all information and context analyzed previously, with a focus on distinguishing between the claim's intrinsic validity and the argumentation pathway used, especially considering the broader context surrounding the issue.]
 
-      Rationale for Category Selection: [Offer a brief explanation that outlines why this category is chosen. This explanation should be grounded in the insights and evidence gathered from the detailed analysis of the transcript and the supporting documents. It should consider any significant points, legal implications, ethical concerns, factual accuracies or inaccuracies, and the distinction between the soundness of the main claim and the methodology or reasoning used to arrive at it.]
+      Rationale for Category Selection: [Provide a rationale for selecting this category from the Category enum, linking your explanation to insights and evidence gathered from the detailed analysis of the transcript and supporting documents. Your rationale should address the claim in the context of its wider implications and established knowledge in the field. Include considerations of significant points, legal and ethical implications, factual accuracies, and the relationship between the claim's validity and the methodology used to arrive at it.]
 
-      [Discuss the approach and methodology used by the speaker to arrive at the main claim, highlighting the strengths and weaknesses in the argumentation, including the use of anecdotes, generalizations, and empirical data.]
-      [Provide a comprehensive understanding of the complexities of the issue, considering economic, social, political, environmental elements, as well as historical and systemic factors. Analyze the complexity of the issue, addressing questions like: "Why is this issue so complex? What are the multiple factors influencing it?"]
+      [Assess the speaker's approach and methodology in formulating the main claim, particularly how it aligns or conflicts with the broader context and established evidence. Evaluate the strengths and weaknesses of their argumentation, including the use of anecdotes, generalizations, and empirical data.]
+
+      [Provide a comprehensive analysis of the issue's complexities, taking into account economic, social, political, environmental, historical, and systemic factors. Discuss why the issue is complex and explore the multiple factors influencing it. Ensure that each major statement is analyzed within the broader context, maintaining a structured approach throughout.]
 
       Each major statement should be analyzed separately, maintaining a structured and thorough approach throughout the analysis.
 
