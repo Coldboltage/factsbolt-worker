@@ -673,6 +673,8 @@ export class JobsService {
 
       Each major statement should be analyzed separately, maintaining a structured and thorough approach throughout the analysis.
 
+      Labelled, Resources, then, provide a list of resources or facts that offer greater context and insight into the broader issue. Ensure these resources come from credible and respected origins, are recognized for their sound advice and dependability across the relevant community, have stood the test of scrutiny and critical examination, are penned by authors without significant controversies in their background, and where feasible, include direct links for further exploration. Recommendations should lean towards sources with broad consensus, steering clear of those with mixed or contentious opinions.
+
       Please note that the transcript is an array of speeches from speakers using this format:
 
       export interface AmendedSpeech {
