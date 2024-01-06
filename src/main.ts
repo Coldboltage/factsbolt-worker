@@ -4,11 +4,6 @@ import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import * as dotenv from 'dotenv';
 require('@tensorflow/tfjs-node');
 
-const envFilePath =
-  process.env.NODE_ENV === 'production' ? '.env.production' : '.env.local';
-
-dotenv.config({ path: envFilePath });
-
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     AppModule,
