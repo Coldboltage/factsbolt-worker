@@ -9,8 +9,6 @@ const envFilePath =
 
 dotenv.config({ path: envFilePath });
 
-console.log(process.env.NODE_ENV);
-
 async function bootstrap() {
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     AppModule,

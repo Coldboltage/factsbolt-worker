@@ -38,3 +38,5 @@ lerna-debug.log*
 *.env
 /src/jobs/downloads
 /src/jobs/videos
+.env.local
+.env.production
