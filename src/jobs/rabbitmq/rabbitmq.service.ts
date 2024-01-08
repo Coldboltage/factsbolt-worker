@@ -53,14 +53,14 @@ export class RabbitmqService implements OnModuleInit {
     return this.jobsService.fullJob(createJobDto);
   }
 
-  async addWebPages(webPages: string[]): Promise<void> {
-    const vectorStore = new WeaviateStore(new TensorFlowEmbeddings(), {
-      client: this.client,
-      indexName: 'Factsbolt',
-      metadataKeys: ['source'],
-    });
-    await this.utilsService.webBrowserDocumentProcess(webPages, vectorStore);
-  }
+  // async addWebPages(webPages: string[]): Promise<void> {
+  //   const vectorStore = new WeaviateStore(new TensorFlowEmbeddings(), {
+  //     client: this.client,
+  //     indexName: 'Factsbolt',
+  //     metadataKeys: ['source'],
+  //   });
+  //   await this.utilsService.webBrowserDocumentProcess(webPages, vectorStore);
+  // }
 
   async textOnlyJob(data: TextOnlyDto) {
     // const createJobDto = new CreateJobDto();

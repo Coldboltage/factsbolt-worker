@@ -10,7 +10,7 @@ async function bootstrap() {
     {
       transport: Transport.RMQ,
       options: {
-        urls: ['amqp://localhost:5672?heartbeat=60'],
+        urls: [`amqp://${process.env.RABBITMQ_BASEURL}:5672`],
         prefetchCount: 1,
         noAck: false,
         queue: 'video_queue',

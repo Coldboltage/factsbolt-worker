@@ -4,20 +4,27 @@ import { RabbitmqController } from './rabbitmq.controller';
 import { JobsModule } from '../jobs.module';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { UtilsModule } from '../../utils/utils.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
-    ClientsModule.register([
+    ClientsModule.registerAsync([
       {
         name: 'FACTSBOLT_WORKER_SERVICE',
-        transport: Transport.RMQ,
-        options: {
-          urls: ['amqp://localhost:5672'],
-          queue: 'api_queue',
-          queueOptions: {
-            durable: false,
+        imports: [ConfigModule],
+        useFactory: async (configService: ConfigService) => ({
+          transport: Transport.RMQ,
+          options: {
+            urls: [
+              `amqp://${configService.get<string>('RABBITMQ_BASEURL')}:5672`,
+            ],
+            queue: 'api_queue',
+            queueOptions: {
+              durable: false,
+            },
           },
-        },
+        }),
+        inject: [ConfigService],
       },
     ]),
     forwardRef(() => JobsModule),
