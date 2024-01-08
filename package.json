@@ -10,7 +10,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "cross-env NODE_ENV=local nest start --watch",
-    "start:dev:prod": "cross-env NODE_ENV=production nest start --watch",
+    "start:dev:prod": "npm run build && cross-env NODE_ENV=production node --max-old-space-size=8192 -r ts-node/register -r tsconfig-paths/register dist/main.js",
     "start:dev:test": "node --max-old-space-size=4096 -r ts-node/register -r tsconfig-paths/register dist/main.js",
     "start:debug": "nest start --debug --watch",
     "start:prod": "cross-env NODE_ENV=production node dist/main",
@@ -59,6 +59,7 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "stripchar": "^1.2.1",
+    "uuid": "^9.0.1",
     "weaviate-ts-client": "^1.4.0",
     "youtube-dl-exec": "^2.4.6",
     "youtube-exec": "^1.0.4"

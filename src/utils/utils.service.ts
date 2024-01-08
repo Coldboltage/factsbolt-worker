@@ -27,6 +27,7 @@ const download = require('download');
 const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const instagramGetUrl = require('instagram-url-direct');
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class UtilsService {
@@ -104,7 +105,7 @@ export class UtilsService {
         url.includes('pdf') ||
         url.includes('.PDF') ||
         url.includes('.cgi') ||
-        url.includes('.cgi')
+        url.includes('.download')
       )
         continue;
 
@@ -211,11 +212,15 @@ export class UtilsService {
   async downloadTikTokJob(
     createJobDto: CreateJobDto,
   ): Promise<CompletedVideoJob> {
-    const downloadedTikTok = await TiktokDL(createJobDto.link);
+    const downloadedTikTok = await TiktokDL(createJobDto.link, {
+      version: 'v1', //  version: "v1" | "v2" | "v3"
+    });
 
     const filteredVideoInformation: VideoJob = {
       id: downloadedTikTok.result.id,
-      name: stripchar.RSExceptUnsAlpNum(downloadedTikTok.result.description),
+      name: stripchar
+        .RSExceptUnsAlpNum(downloadedTikTok.result.description)
+        .slice(0, 250),
       link: createJobDto.link,
     };
 
@@ -233,8 +238,7 @@ export class UtilsService {
     let finishedDownload;
 
     try {
-      finishedDownload = await download(realVideoLink);
-      fs.writeFileSync(`${filePath}.mp4`, finishedDownload);
+      fs.writeFileSync(`${filePath}.mp4`, await download(realVideoLink));
 
       console.log('done');
       await new Promise((resolve, reject) => {
