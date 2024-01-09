@@ -379,15 +379,15 @@ export class JobsService {
       // modelName: 'gpt-3.5-turbo-1106',
     });
 
-    const mainClaimQuick = await testModel.invoke(
-      `Direct Summary: ${transcriptionJob.text}`,
-    );
+    // const mainClaimQuick = await testModel.invoke(
+    //   `Direct Summary: ${transcriptionJob.text}`,
+    // );
 
-    const fullTranscriptClaim = await vectorStoreRetriever.getRelevantDocuments(
-      mainClaimQuick,
-    );
+    // const fullTranscriptClaim = await vectorStoreRetriever.getRelevantDocuments(
+    //   mainClaimQuick,
+    // );
 
-    results.push(...fullTranscriptClaim);
+    // results.push(...fullTranscriptClaim);
 
     const vectorStoreRetrieverHyde = new HydeRetriever({
       vectorStore,
