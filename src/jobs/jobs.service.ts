@@ -284,6 +284,7 @@ export class JobsService {
 
     let searchTerm = [];
     let searchResultFilter = [];
+    let hydeSearchQueries = [];
 
     const claimCheck = await this.utilsService.getAllClaimsFromTranscript(
       transcriptionJob,
@@ -365,7 +366,9 @@ export class JobsService {
 
     let results: DocumentInterface<Record<string, any>>[] = [];
 
-    for (const claim of claimCheck) {
+    this.logger.verbose(searchTerm);
+
+    for (const claim of searchTerm) {
       this.logger.debug(claim);
       const test = await vectorStoreRetriever.getRelevantDocuments(claim);
       this.logger.verbose(test);
