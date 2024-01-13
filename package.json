@@ -61,8 +61,7 @@
     "stripchar": "^1.2.1",
     "uuid": "^9.0.1",
     "weaviate-ts-client": "^1.4.0",
-    "youtube-dl-exec": "^2.4.6",
-    "youtube-exec": "^1.0.4"
+    "youtube-dl-exec": "^2.4.6"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
