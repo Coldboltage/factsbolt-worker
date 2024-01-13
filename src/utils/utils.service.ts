@@ -297,6 +297,12 @@ export class UtilsService {
 
     console.log(filteredVideoInformation);
 
+    const dir = './src/jobs/downloads';
+
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
     const audioInformation: AudioInformation = {
       url: createJobDto.link,
       filename: stripchar.RSExceptUnsAlpNum(filteredVideoInformation.name),

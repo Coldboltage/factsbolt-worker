@@ -22,7 +22,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@faker-js/faker": "^8.0.2",
+    "@faker-js/faker": "^8.3.1",
     "@mozilla/readability": "^0.4.4",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.1.1",
@@ -61,7 +61,8 @@
     "stripchar": "^1.2.1",
     "uuid": "^9.0.1",
     "weaviate-ts-client": "^1.4.0",
-    "youtube-dl-exec": "^2.4.6"
+    "youtube-dl-exec": "^2.4.6",
+    "youtube-exec": "file:temp/youtube-exec"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
@@ -86,7 +87,8 @@
     "ts-loader": "^9.4.3",
     "ts-node": "^10.9.1",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.1.3"
+    "typescript": "^5.1.3",
+    "youtube-exec": "file:temp/youtube-exec"
   },
   "jest": {
     "moduleFileExtensions": [

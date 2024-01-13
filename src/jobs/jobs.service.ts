@@ -36,7 +36,6 @@ import {
 import { UtilsService } from '../utils/utils.service';
 import { HydeRetriever } from 'langchain/retrievers/hyde';
 import { faker } from '@faker-js/faker';
-
 import weaviate from 'weaviate-ts-client';
 import { WeaviateStore } from 'langchain/vectorstores/weaviate';
 import { RunnableSequence } from 'langchain/schema/runnable';
@@ -291,10 +290,10 @@ export class JobsService {
       title,
     );
 
-    if (process.env.SEARCH_GOOGLE === 'true') {
-      searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
-      searchTerm.push(...claimCheck);
+    searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
+    searchTerm.push(...claimCheck);
 
+    if (process.env.SEARCH_GOOGLE === 'true') {
       // const searchTermToUrl = async (term: string) => {
       //   let searchResults = await this.utilsService.searchTerm(term);
       //   const currentSearchResultFilter =
