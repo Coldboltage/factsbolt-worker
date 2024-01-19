@@ -24,6 +24,7 @@ import { ClientProxy } from '@nestjs/microservices';
 const { dlAudio } = require('youtube-exec');
 const youtubedl = require('youtube-dl-exec');
 const { Configuration, OpenAIApi } = require('openai');
+import { OpenAIEmbeddings } from '@langchain/openai';
 const stripchar = require('stripchar').StripChar;
 import { OpenAI } from 'langchain/llms/openai';
 import { PromptTemplate } from 'langchain/prompts';
@@ -44,6 +45,7 @@ import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_
 import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
 import { DocumentInterface } from '@langchain/core/documents';
 import { z } from 'zod';
+import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
 
 @Injectable()
 export class JobsService {
@@ -270,7 +272,36 @@ export class JobsService {
     const client = (weaviate as any).client({
       scheme: process.env.WEAVIATE_SCHEME || 'http',
       host: process.env.WEAVIATE_HOST || 'localhost:8080',
+      apiKey: new (weaviate as any).ApiKey(
+        process.env.WEAVIATE_API_KEY || 'default',
+      ),
     });
+
+    const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
+      client,
+      indexName: 'Factsbolt',
+      metadataKeys: ['source'],
+    });
+
+    // const vectorStore = new WeaviateStore(
+    //   new HuggingFaceInferenceEmbeddings({
+    //     model: 'WhereIsAI/UAE-Large-V1',
+    //   }),
+    //   {
+    //     client,
+    //     indexName: 'Factsbolt',
+    //     metadataKeys: ['source'],
+    //   },
+    // );
+
+    // const response = await client.graphql
+    //   .aggregate()
+    //   .withClassName('Factsbolt')
+    //   .withFields('meta { count }')
+    //   .do();
+    // console.log(response.data.Aggregate.Factsbolt);
+
+    // throw new Error();
 
     const llm = new OpenAI({ temperature: 0, modelName: 'gpt-4-1106-preview' });
 
@@ -333,11 +364,11 @@ export class JobsService {
     // const searchResultFilterReuters =
     //   this.utilsService.extractURLs(searchResultsReuters);
 
-    const vectorStore = new WeaviateStore(new TensorFlowEmbeddings(), {
-      client,
-      indexName: 'Factsbolt',
-      metadataKeys: ['source'],
-    });
+    // const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
+    //   client,
+    //   indexName: 'Factsbolt',
+    //   metadataKeys: ['source'],
+    // });
 
     if (process.env.SEARCH_GOOGLE === 'true') {
       await this.utilsService.webBrowserDocumentProcess(
@@ -467,8 +498,7 @@ export class JobsService {
       
       Misleading Fact: This category is for identifying statements that, while based on verified facts or claims up to April 2023 from credible sources, include elements that could be misleading or taken out of context. When labeling a statement as a 'Misleading Fact,' it is crucial to first affirm the overall factual accuracy of the core claim, using training data, documented context, or credible public sources. The analysis should then focus on identifying and explaining specific aspects of the statement that are potentially misleading or misrepresented. This involves discussing which particular elements or phrasings in the statement contribute to a misleading narrative and why they are considered manipulative in the given context. Additionally, it is important to clarify what additional information or perspective is necessary to fully understand these elements and to rectify any misconceptions. The evaluation should also consider the potential utility and harm of these manipulated elements, discussing how they could influence interpretations or decisions in various scenarios. It is equally important to include counterpoints or alternative perspectives that add valuable context to the specific manipulated elements of the fact, especially those supported by training data or other credible sources. The goal is to guide the audience towards an informed understanding by distinguishing between the verified core of the claim and the contextually manipulated aspects of its presentation.
 
-      Unverified Claims: Identify statements presented as facts or claims about reality that currently lack verifiable evidence or reliable sources for substantiation. Label these as 'Unverified Claim.' In your analysis, explain why the statement remains unverified, highlighting the limitations of the available resources or search capabilities that might have led to this conclusion. Note that while the claim remains unverified at the moment, it does not necessarily mean it is false — further research or future information could potentially verify it. Discuss the potential implications of the claim, including how it might be used or misused in different contexts if accepted without verification, and encourage the audience to consider the claim with a critical perspective, acknowledging the current limitations in verifying its accuracy.
-
+      Unverified Claims: Identify statements presented as facts or claims about reality that currently lack verifiable evidence or reliable sources for substantiation. Label these as 'Unverified Claim.' In your analysis, explain why the statement remains unverified, highlighting the limitations of the available resources or search capabilities that might have led to this conclusion. This includes acknowledging the importance of neutral and reliable sources for the verification process. Note that while the claim remains unverified at the moment, it does not necessarily mean it is false — further research or future information could potentially verify it. Discuss the potential implications of the claim, including how it might be used or misused in different contexts if accepted without verification, and encourage the audience to consider the claim with a critical perspective, acknowledging the current limitations in verifying its accuracy and the need for objective, evidence-based information sources.
       Factually Incorrect: This category applies to statements, claims, opinions, or speculations that either directly contradict current, well-established knowledge and empirical evidence, or represent a significant misunderstanding or misrepresentation of such knowledge. This includes not only statements that are demonstrably false but also those that, while possibly grounded in personal experience or belief, are at odds with established scientific consensus or factual understanding. The key aspect of this category is the presence of a clear conflict between the statement and established facts or scientific understanding, regardless of whether the statement is framed as a personal belief or experience.
 
       Unsupported Opinion: This category is for opinions that lack a basis in verified facts or empirical evidence. These opinions may not necessarily be in direct conflict with established facts (like flat earth theories would be), but they also do not align with or are supported by current empirical knowledge. This category helps to differentiate opinions that are not inherently harmful or manipulative but are also not supported by factual evidence.

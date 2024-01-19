@@ -28,10 +28,20 @@ const fs = require('fs');
 const ffmpeg = require('fluent-ffmpeg');
 const instagramGetUrl = require('instagram-url-direct');
 import { v4 as uuidv4 } from 'uuid';
+import weaviate from 'weaviate-ts-client';
+import { OpenAIEmbeddings } from '@langchain/openai';
 
 @Injectable()
 export class UtilsService {
   private readonly logger = new Logger(UtilsService.name);
+
+  // private client = (weaviate as any).client({
+  //   scheme: process.env.WEAVIATE_SCHEME || 'http',
+  //   host: process.env.WEAVIATE_HOST || 'localhost:8080',
+  //   apiKey: new (weaviate as any).ApiKey(
+  //     process.env.WEAVIATE_API_KEY || 'default',
+  //   ),
+  // });
 
   // async searchTerm(query: string): Promise<SearchResult[]> {
   //   console.log(query);
@@ -181,16 +191,27 @@ export class UtilsService {
       }
 
       try {
-        await vectorStore.delete({
-          filter: {
-            where: {
-              operator: 'Equal',
-              path: ['source'],
-              valueText: url,
-            },
-          },
-        });
+        // await vectorStore.delete({
+        //   filter: {
+        //     where: {
+        //       operator: 'Equal',
+        //       path: ['source'],
+        //       valueText: url,
+        //     },
+        //   },
+        // });
         await vectorStore.addDocuments(filteredDocuments);
+        // await WeaviateStore.fromDocuments(
+        //   filteredDocuments,
+        //   new OpenAIEmbeddings({
+        //     batchSize: 512,
+        //   }),
+        //   {
+        //     client: this.client,
+        //     indexName: 'Factsbolt',
+        //     metadataKeys: ['source'],
+        //   },
+        // );
         this.logger.debug('documents added to weaviate');
       } catch (error) {
         console.log(error);
