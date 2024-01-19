@@ -191,6 +191,7 @@ export class UtilsService {
           },
         });
         await vectorStore.addDocuments(filteredDocuments);
+        this.logger.debug('documents added to weaviate');
       } catch (error) {
         console.log(error);
         console.log(`${url} failed`);
