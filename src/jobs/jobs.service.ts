@@ -312,17 +312,17 @@ export class JobsService {
     //   ? await this.transcriptSearchGen(transcriptionJob, title)
     //   : await this.generalTextSearchGen(text, title);
 
-    let searchTerm = [];
     let searchResultFilter = [];
-    let hydeSearchQueries = [];
 
-    const claimCheck = await this.utilsService.getAllClaimsFromTranscript(
-      transcriptionJob,
-      title,
-    );
+    // const claimCheck = await this.utilsService.getAllClaimsFromTranscript(
+    //   transcriptionJob,
+    //   title,
+    // );
 
-    searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
-    searchTerm.push(...claimCheck);
+    const searchTerm = await this.combinedClaimSetup(transcriptionJob, title);
+
+    // searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
+    // searchTerm.push(...claimCheck);
 
     if (process.env.SEARCH_GOOGLE === 'true') {
       // const searchTermToUrl = async (term: string) => {
@@ -945,6 +945,148 @@ export class JobsService {
       default:
         return 'No Site Found';
     }
+  }
+
+  async aClaimFinder(
+    transcriptionJob: TranscriptionJob,
+    title: string,
+  ): Promise<string> {
+    const parser = StructuredOutputParser.fromZodSchema(
+      z.object({
+        answer: z.string().describe('Copy the query string made'),
+      }),
+    );
+
+    const transcriptChain = RunnableSequence.from([
+      PromptTemplate.fromTemplate(
+        `Begin by analyzing the title for initial context. Delve into the transcription, identifying key subjects, specific claims, statistics, or notable statements. Focus on extracting these core elements from the transcription, rather than the speaker's broader perspective or the general context of the discussion.
+        
+        Construct a search query that specifically targets the amalgamation of these identified subjects and claims. Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their scientific, psychological, and societal aspects.
+        
+        When formulating your query, ensure it is precise and succinct, ideally limited to 32 words. Avoid the use of special characters like question marks, periods, or any non-alphanumeric symbols. The goal is to create a query that directly delves into the subjects themselves, such as understanding 'depression' in a broader sense when mentioned, rather than focusing on the speaker's perspective or the mere fact that the subject was discussed.
+        
+        Finally, from this analysis, create one comprehensive search query string, that encompasses all key subjects or claims identified in the transcription. {format_instructions} {title} {transcription}`,
+      ),
+      new OpenAI({ temperature: 0, modelName: 'gpt-4-1106-preview' }),
+      parser,
+    ]);
+
+    let parsed;
+
+    try {
+      parsed = await transcriptChain.invoke({
+        format_instructions: parser.getFormatInstructions(),
+        title,
+        transcription: transcriptionJob.text,
+      });
+    } catch (error) {
+      console.log(error);
+    }
+
+    return parsed?.answer ? parsed?.answer : null;
+  }
+
+  async mainClaimFinder(
+    transcriptionJob: TranscriptionJob,
+    title: string,
+  ): Promise<string> {
+    const parserMainClaim = StructuredOutputParser.fromNamesAndDescriptions({
+      query: 'extract the query property',
+    });
+
+    const formatInstructionsMainClaim = parserMainClaim.getFormatInstructions();
+
+    const promptMainClaim = new PromptTemplate({
+      template: `
+      Succinctly state the main claim within a 16-word limit, capturing its essence as supported by the provided transcript/text and any relevant documents/context, labelled as query.
+      
+      {format_instructions} {title} {transcription}`,
+      inputVariables: ['transcription', 'title'],
+      partialVariables: { format_instructions: formatInstructionsMainClaim },
+    });
+
+    const inputMainClaim = await promptMainClaim.format({
+      transcription: transcriptionJob.text,
+      title,
+    });
+
+    // const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
+    const modelMainClaim = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4-1106-preview',
+    });
+
+    // const model = new OpenAI({ temperature: 0 });
+
+    const responseMainClaim = await modelMainClaim.call(inputMainClaim);
+
+    const parsedMainClaim = await parserMainClaim.parse(responseMainClaim);
+
+    console.log(parsedMainClaim);
+    return parsedMainClaim.query;
+  }
+
+  async hydeClaimList(
+    transcriptionJob: TranscriptionJob,
+    title: string,
+  ): Promise<string[]> {
+    // List test
+    // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
+    const parserList = new CommaSeparatedListOutputParser();
+
+    const chain = RunnableSequence.from([
+      PromptTemplate.fromTemplate(`Begin by analyzing the title for initial context. Delve into the transcription, identifying key subjects, specific claims, statistics, or notable statements, regardless of the topic. Assess the importance of each element based on its emphasis within the transcript and its potential impact on the overall narrative or discussion.
+
+      Construct search queries that are tailored to these identified subjects and claims. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid special characters like question marks, periods, or non-alphanumeric symbols. Focus on creating queries that explore the specifics of the situation, prioritizing those aspects that are most central or repeatedly mentioned in the transcript.
+      
+      Aim to gather comprehensive and detailed information about each subject, utilizing current, credible, and scientific sources. Explore each subject in depth, examining its relevance to the main event or issue, including legal, ethical, societal, historical, or cultural aspects, as applicable.
+      
+      When formulating your queries, consider the variety and complexity of topics that might arise in the transcript. Tailor your queries to cover a wide range of potential areas, from specific factual verifications to broader contextual inquiries.
+      
+      Finally, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. Organize these queries based on the relevance and importance of each topic within the context of the transcript. This approach ensures a thorough and adaptable exploration of each significant aspect of the event or issue, tailored to the specific content of the transcript. This list should be of the 3 best queries you can think of.
+
+      {format_instructions} {title} {transcription}`),
+      new OpenAI({
+        temperature: 0,
+        modelName: 'gpt-4-1106-preview',
+      }),
+      parserList,
+    ]);
+
+    const responseList = await chain.invoke({
+      transcription: transcriptionJob.text,
+      title,
+      format_instructions: parserList.getFormatInstructions(),
+    });
+
+    return responseList;
+  }
+
+  async combinedClaimSetup(
+    transcriptionJob: TranscriptionJob,
+    title: string,
+  ): Promise<string[]> {
+    const listOfClaims = this.utilsService.getAllClaimsFromTranscript(
+      transcriptionJob,
+      title,
+    );
+    const aClaimFinderPromise = this.aClaimFinder(transcriptionJob, title);
+    const mainClaimFinderPromise = this.mainClaimFinder(
+      transcriptionJob,
+      title,
+    );
+    const hydeClaimList = this.hydeClaimList(transcriptionJob, title);
+
+    const arrayPromises = [listOfClaims, mainClaimFinderPromise, hydeClaimList];
+
+    if (aClaimFinderPromise) arrayPromises.push(aClaimFinderPromise);
+
+    const combinedClaimsSearch = await Promise.all([
+      listOfClaims,
+      mainClaimFinderPromise,
+      hydeClaimList,
+    ]);
+    return combinedClaimsSearch.flat().filter((claim) => claim !== undefined);
   }
 
   async transcriptSearchGen(
