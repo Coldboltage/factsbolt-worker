@@ -10,7 +10,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "cross-env NODE_ENV=local nest start --watch",
-    "start:dev:prod": "npm run build && cross-env NODE_ENV=production node --max-old-space-size=8192 -r ts-node/register -r tsconfig-paths/register dist/main.js",
+    "start:dev:prod": "npm run build && cross-env NODE_ENV=production node --max-old-space-size=16384 -r ts-node/register -r tsconfig-paths/register dist/main.js",
     "start:dev:test": "node --max-old-space-size=4096 -r ts-node/register -r tsconfig-paths/register dist/main.js",
     "start:debug": "nest start --debug --watch",
     "start:prod": "cross-env NODE_ENV=production node dist/main",

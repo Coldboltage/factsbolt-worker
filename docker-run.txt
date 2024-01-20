@@ -1,1 +1,1 @@
-sudo docker run  -p 3000:3000 --net=host --env-file .env.production -e NODE_ENV=production coldbolt/factsbolt-worker:0.0.1
+sudo docker run  -p 3000:3000 --net=host --env-file .env.production -e NODE_ENV=production coldbolt/factsbolt-worker:0.0.2

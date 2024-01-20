@@ -398,19 +398,36 @@ export class JobsService {
 
     this.logger.verbose(searchTerm);
 
-    for (const claim of searchTerm) {
+    // for (const claim of searchTerm) {
+    //   this.logger.debug(claim);
+    //   const test = await vectorStoreRetriever.getRelevantDocuments(claim);
+    //   this.logger.verbose(test);
+    //   results.push(...test);
+    // }
+
+    const getDocByClaim = async (
+      claim: string,
+    ): Promise<DocumentInterface<Record<string, any>>[]> => {
       this.logger.debug(claim);
       const test = await vectorStoreRetriever.getRelevantDocuments(claim);
       this.logger.verbose(test);
-      results.push(...test);
+      return test;
+    };
+
+    const claimPromises = searchTerm.map((claim) => getDocByClaim(claim));
+
+    const accumulatedClaimsDoc = await Promise.all(claimPromises);
+
+    for (const docArray of accumulatedClaimsDoc) {
+      results.push(...docArray);
     }
 
-    const testModel = new OpenAI({
-      temperature: 0,
-      modelName: 'gpt-3.5-turbo-1106',
-      // modelName: 'gpt-4-0314',
-      // modelName: 'gpt-3.5-turbo-1106',
-    });
+    // const testModel = new OpenAI({
+    //   temperature: 0,
+    //   modelName: 'gpt-3.5-turbo-1106',
+    //   // modelName: 'gpt-4-0314',
+    //   // modelName: 'gpt-3.5-turbo-1106',
+    // });
 
     // const mainClaimQuick = await testModel.invoke(
     //   `Direct Summary: ${transcriptionJob.text}`,
@@ -934,11 +951,6 @@ export class JobsService {
     transcriptionJob: TranscriptionJob,
     title: string,
   ): Promise<string[]> {
-    // const parser = StructuredOutputParser.fromNamesAndDescriptions({
-    //   query: 'extract the query',
-    // });
-
-    // We can use zod to define a schema for the output using the `fromZodSchema` method of `StructuredOutputParser`.
     const parser = StructuredOutputParser.fromZodSchema(
       z.object({
         answer: z.string().describe('Copy the query string made'),

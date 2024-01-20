@@ -107,7 +107,10 @@ export class UtilsService {
     fullSite?: boolean,
   ): Promise<void> {
     this.logger.debug(`siteLink parameter: ${siteLinks}`);
-    for (const url of siteLinks) {
+
+    const setSiteLinks = [...new Set([...siteLinks])];
+
+    const processUrl = async (url: string) => {
       this.logger.log(`Documenting ${url}`);
       if (
         !url ||
@@ -117,7 +120,7 @@ export class UtilsService {
         url.includes('.cgi') ||
         url.includes('.download')
       )
-        continue;
+        return;
 
       // const loader = new PuppeteerWebBaseLoader(url, {
       //   launchOptions: {
@@ -136,7 +139,7 @@ export class UtilsService {
         docs = await loader.load();
       } catch (error) {
         // console.log(`${result} failed`);
-        continue;
+        return;
       }
 
       this.logger.debug('loader completed');
@@ -163,7 +166,7 @@ export class UtilsService {
         newDocuments = await sequence.invoke(docs);
       } catch (error) {
         console.log('invoke broke');
-        continue;
+        return;
       }
 
       this.logger.debug('invoke completed');
@@ -178,7 +181,7 @@ export class UtilsService {
 
       if (!filteredDocuments) {
         this.logger.error('no documents found');
-        continue;
+        return;
       }
 
       this.logger.debug(
@@ -187,19 +190,19 @@ export class UtilsService {
 
       if (filteredDocuments.length > 1200) {
         this.logger.debug('too many documents to handle');
-        continue;
+        return;
       }
 
       try {
-        // await vectorStore.delete({
-        //   filter: {
-        //     where: {
-        //       operator: 'Equal',
-        //       path: ['source'],
-        //       valueText: url,
-        //     },
-        //   },
-        // });
+        await vectorStore.delete({
+          filter: {
+            where: {
+              operator: 'Equal',
+              path: ['source'],
+              valueText: url,
+            },
+          },
+        });
         await vectorStore.addDocuments(filteredDocuments);
         // await WeaviateStore.fromDocuments(
         //   filteredDocuments,
@@ -219,7 +222,125 @@ export class UtilsService {
       }
 
       console.log('done');
-    }
+    };
+
+    const promises = setSiteLinks.map((url) => processUrl(url));
+
+    await Promise.all(promises);
+
+    // for (const url of siteLinks) {
+    //   this.logger.log(`Documenting ${url}`);
+    //   if (
+    //     !url ||
+    //     url.includes('youtube') ||
+    //     url.includes('pdf') ||
+    //     url.includes('.PDF') ||
+    //     url.includes('.cgi') ||
+    //     url.includes('.download')
+    //   )
+    //     continue;
+
+    //   // const loader = new PuppeteerWebBaseLoader(url, {
+    //   //   launchOptions: {
+    //   //     headless: 'new',
+    //   //   },
+    //   // });
+
+    //   const loader = new CheerioWebBaseLoader(url);
+
+    //   // const loader = new CheerioWebBaseLoader(result);
+
+    //   let docs: Document<Record<string, any>>[];
+
+    //   try {
+    //     this.logger.debug('loading started');
+    //     docs = await loader.load();
+    //   } catch (error) {
+    //     // console.log(`${result} failed`);
+    //     continue;
+    //   }
+
+    //   this.logger.debug('loader completed');
+
+    //   // Check from splitter if that's the bottleneck for bit pdf files
+
+    //   const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
+    //     chunkSize: 600, // Roughly double the current estimated chunk size
+    //     chunkOverlap: 20, // This is arbitrary; adjust based on your needs
+    //     separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
+    //   });
+
+    //   const transformer = new MozillaReadabilityTransformer();
+
+    //   const sequence = splitter.pipe(transformer);
+
+    //   this.logger.debug('splitter completed');
+
+    //   let newDocuments;
+
+    //   // Invoking is the bottle neck learn what this is.
+
+    //   try {
+    //     newDocuments = await sequence.invoke(docs);
+    //   } catch (error) {
+    //     console.log('invoke broke');
+    //     continue;
+    //   }
+
+    //   this.logger.debug('invoke completed');
+
+    //   let filteredDocuments: Document[];
+
+    //   if (Array.isArray(newDocuments)) {
+    //     filteredDocuments = newDocuments.filter((doc: Document) => {
+    //       return doc.pageContent ? true : false;
+    //     });
+    //   }
+
+    //   if (!filteredDocuments) {
+    //     this.logger.error('no documents found');
+    //     continue;
+    //   }
+
+    //   this.logger.debug(
+    //     `Filtered Documents Amount: ${filteredDocuments.length}`,
+    //   );
+
+    //   if (filteredDocuments.length > 1200) {
+    //     this.logger.debug('too many documents to handle');
+    //     continue;
+    //   }
+
+    //   try {
+    //     // await vectorStore.delete({
+    //     //   filter: {
+    //     //     where: {
+    //     //       operator: 'Equal',
+    //     //       path: ['source'],
+    //     //       valueText: url,
+    //     //     },
+    //     //   },
+    //     // });
+    //     await vectorStore.addDocuments(filteredDocuments);
+    //     // await WeaviateStore.fromDocuments(
+    //     //   filteredDocuments,
+    //     //   new OpenAIEmbeddings({
+    //     //     batchSize: 512,
+    //     //   }),
+    //     //   {
+    //     //     client: this.client,
+    //     //     indexName: 'Factsbolt',
+    //     //     metadataKeys: ['source'],
+    //     //   },
+    //     // );
+    //     this.logger.debug('documents added to weaviate');
+    //   } catch (error) {
+    //     console.log(error);
+    //     console.log(`${url} failed`);
+    //   }
+
+    //   console.log('done');
+    // }
     this.logger.debug('Complete');
   }
 
