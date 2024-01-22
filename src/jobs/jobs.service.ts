@@ -46,6 +46,8 @@ import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/cha
 import { DocumentInterface } from '@langchain/core/documents';
 import { z } from 'zod';
 import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
+import { Scrapper, ScrapperStatus } from '../scrapper/entities/scrapper.entity';
+import { uuid } from 'uuidv4';
 
 @Injectable()
 export class JobsService {
@@ -345,10 +347,56 @@ export class JobsService {
       //   ];
       // }
 
+      const workerUUID = uuid();
+
+      await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json', // Include or omit based on your requirements
+        },
+      });
+
+      let status = false; // Assuming 'status' is declared somewhere in your scope
+
+      await new Promise((resolve) => {
+        const pollStatus = async (id: string) => {
+          console.log('polling loop');
+          try {
+            const response = await axios.get(
+              `${process.env.API_BASE_URL}/scrapper/${id}`,
+            );
+            const data: Scrapper = response.data;
+            if (data.status === ScrapperStatus.READY) {
+              status = true;
+              resolve('lol'); // Resolve the promise when condition is met
+            } else {
+              console.log(`Status is ${data.status}`);
+              setTimeout(() => pollStatus(id), 5000);
+            }
+          } catch (error) {
+            console.error('Error in polling:', error);
+            // Depending on your error handling strategy, you may choose to reject the promise here
+            // reject(error);
+          }
+        };
+
+        pollStatus(workerUUID); // Initial call to start polling
+      });
+
       searchResultFilter = await this.utilsService.processSearchTermsRxJS(
         searchTerm,
         5,
       );
+
+      await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json', // Include or omit based on your requirements
+        },
+        data: {
+          status: ScrapperStatus.DONE,
+        },
+      });
     }
 
     // let searchResultFilter = this.utilsService.extractURLs(searchResults);

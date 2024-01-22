@@ -5,6 +5,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { RabbitmqModule } from './jobs/rabbitmq/rabbitmq.module';
 import { UtilsModule } from './utils/utils.module';
 import { ConfigModule } from '@nestjs/config';
+import { ScrapperModule } from './scrapper/scrapper.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ConfigModule } from '@nestjs/config';
     JobsModule,
     RabbitmqModule,
     UtilsModule,
+    ScrapperModule,
   ],
   controllers: [AppController],
   providers: [AppService],
