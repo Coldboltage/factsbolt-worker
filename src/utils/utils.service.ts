@@ -30,6 +30,9 @@ const instagramGetUrl = require('instagram-url-direct');
 import { v4 as uuidv4 } from 'uuid';
 import weaviate from 'weaviate-ts-client';
 import { OpenAIEmbeddings } from '@langchain/openai';
+import { GoogleSearch } from '../google/entities/google.entity';
+
+const serp = require('serp');
 
 @Injectable()
 export class UtilsService {
@@ -871,11 +874,37 @@ export class UtilsService {
     concurrencyLimit: number,
   ): Promise<string[]> {
     const searchTermObservable = from(searchTerms).pipe(
-      mergeMap((term) => this.searchTermToUrl(term), concurrencyLimit),
+      // mergeMap((term) => this.searchTermToUrl(term), concurrencyLimit),
+      mergeMap((term) => this.googleSearch(term), concurrencyLimit),
       concatAll(),
       toArray(),
     );
 
     return lastValueFrom(searchTermObservable);
+  }
+
+  async googleSearch(query: string): Promise<string[]> {
+    const options = {
+      host: 'google.com',
+      qs: {
+        q: query,
+        filter: 0,
+        pws: 0,
+      },
+      // proxy: {
+      //   server: process.env.SERP_SERVER,
+      //   username: process.env.SERP_USERNAME,
+      //   password: process.env.SERP_PASSWORD,
+      // },
+      num: 3,
+    };
+    console.log('Interesting');
+    const links: GoogleSearch[] = await serp.search(options);
+    const filterLinks = links
+      .map((link) => {
+        return link.url;
+      })
+      .filter((_, index) => index < 3);
+    return filterLinks;
   }
 }

@@ -11,9 +11,9 @@ async function bootstrap() {
       transport: Transport.RMQ,
       options: {
         urls: [`amqp://${process.env.RABBITMQ_BASEURL}:5672`],
-        prefetchCount: 1,
+        prefetchCount: process.env.QUEUE_ENV ? 1 : 1,
         noAck: false,
-        queue: 'video_queue',
+        queue: `${process.env.QUEUE_ENV || 'video_queue'}`,
         queueOptions: {
           durable: false,
           heartbeatIntervalInSeconds: 60, // Heartbeat interval in seconds

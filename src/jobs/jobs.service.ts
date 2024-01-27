@@ -46,6 +46,9 @@ import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/cha
 import { DocumentInterface } from '@langchain/core/documents';
 import { z } from 'zod';
 import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
+import { Scrapper, ScrapperStatus } from '../scrapper/entities/scrapper.entity';
+import { uuid } from 'uuidv4';
+import { CohereEmbeddings } from '@langchain/cohere';
 
 @Injectable()
 export class JobsService {
@@ -277,11 +280,22 @@ export class JobsService {
       ),
     });
 
-    const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
-      client,
-      indexName: 'Factsbolt',
-      metadataKeys: ['source'],
-    });
+    const vectorStore = new WeaviateStore(
+      new CohereEmbeddings({
+        // model: 'embed-english-v3.0',
+      }),
+      {
+        client,
+        indexName: 'Factsbolt',
+        metadataKeys: ['source'],
+      },
+    );
+
+    // const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
+    //   client,
+    //   indexName: 'Factsbolt',
+    //   metadataKeys: ['source'],
+    // });
 
     // const vectorStore = new WeaviateStore(
     //   new HuggingFaceInferenceEmbeddings({
@@ -345,10 +359,56 @@ export class JobsService {
       //   ];
       // }
 
+      const workerUUID = uuid();
+
+      await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json', // Include or omit based on your requirements
+        },
+      });
+
+      let status = false; // Assuming 'status' is declared somewhere in your scope
+
+      await new Promise((resolve) => {
+        const pollStatus = async (id: string) => {
+          console.log('polling loop');
+          try {
+            const response = await axios.get(
+              `${process.env.API_BASE_URL}/scrapper/${id}`,
+            );
+            const data: Scrapper = response.data;
+            if (data.status === ScrapperStatus.READY) {
+              status = true;
+              resolve('lol'); // Resolve the promise when condition is met
+            } else {
+              console.log(`Status is ${data.status}`);
+              setTimeout(() => pollStatus(id), 5000);
+            }
+          } catch (error) {
+            console.error('Error in polling:', error);
+            // Depending on your error handling strategy, you may choose to reject the promise here
+            // reject(error);
+          }
+        };
+
+        pollStatus(workerUUID); // Initial call to start polling
+      });
+
       searchResultFilter = await this.utilsService.processSearchTermsRxJS(
         searchTerm,
         5,
       );
+
+      await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json', // Include or omit based on your requirements
+        },
+        data: {
+          status: ScrapperStatus.DONE,
+        },
+      });
     }
 
     // let searchResultFilter = this.utilsService.extractURLs(searchResults);
@@ -380,6 +440,18 @@ export class JobsService {
       );
     }
 
+    const vectorStoreSearchQuery = new WeaviateStore(
+      new CohereEmbeddings({
+        // model: 'embed-english-v3.0',
+        inputType: 'search_query',
+      }),
+      {
+        client,
+        indexName: 'Factsbolt',
+        metadataKeys: ['source'],
+      },
+    );
+
     const baseCompressorModel = new OpenAI({
       temperature: 0,
       modelName: 'gpt-3.5-turbo-1106',
@@ -389,9 +461,16 @@ export class JobsService {
 
     const baseCompressor = LLMChainExtractor.fromLLM(baseCompressorModel);
 
+    // NORMAL VECTORSTORE
+    // const vectorStoreRetriever = new ContextualCompressionRetriever({
+    //   baseCompressor,
+    //   baseRetriever: vectorStore.asRetriever(), // Your existing vector store
+    // });
+
+    // COHERE SPECIFIC
     const vectorStoreRetriever = new ContextualCompressionRetriever({
       baseCompressor,
-      baseRetriever: vectorStore.asRetriever(), // Your existing vector store
+      baseRetriever: vectorStoreSearchQuery.asRetriever(), // Your existing vector store
     });
 
     let results: DocumentInterface<Record<string, any>>[] = [];
@@ -416,10 +495,12 @@ export class JobsService {
 
     const claimPromises = searchTerm.map((claim) => getDocByClaim(claim));
 
-    const accumulatedClaimsDoc = await Promise.all(claimPromises);
+    const accumulatedClaimsDoc = await Promise.allSettled(claimPromises);
+
+    this.logger.verbose('add accumulatedClaimsDoc to results');
 
     for (const docArray of accumulatedClaimsDoc) {
-      results.push(...docArray);
+      if (docArray.status === 'fulfilled') results.push(...docArray.value);
     }
 
     // const testModel = new OpenAI({
@@ -439,28 +520,28 @@ export class JobsService {
 
     // results.push(...fullTranscriptClaim);
 
-    const vectorStoreRetrieverHyde = new HydeRetriever({
-      vectorStore,
-      llm: baseCompressorModel,
-      k: 6,
-      verbose: false,
-    });
+    // const vectorStoreRetrieverHyde = new HydeRetriever({
+    //   vectorStore,
+    //   llm: baseCompressorModel,
+    //   k: 6,
+    //   verbose: false,
+    // });
 
-    const hydeResponse = await vectorStoreRetrieverHyde.getRelevantDocuments(
-      `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
+    // const hydeResponse = await vectorStoreRetrieverHyde.getRelevantDocuments(
+    //   `Begin by analyzing the title for initial context. Then, delve deeply into the transcription, identifying key subjects, specific claims, statistics, or notable statements related to the main event or issue. Assess and prioritize these elements based on their contextual importance and relevance to the main discussion.
 
-    Construct search queries that target these identified subjects and claims, with a focus on those deemed more significant. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid the use of special characters like question marks, periods, or non-alphanumeric symbols. The goal is to create queries that delve into the specifics of the situation, giving priority to the most important aspects, such as key individual statements, significant legal proceedings, crucial organizational responses, and vital media coverage.
+    // Construct search queries that target these identified subjects and claims, with a focus on those deemed more significant. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid the use of special characters like question marks, periods, or non-alphanumeric symbols. The goal is to create queries that delve into the specifics of the situation, giving priority to the most important aspects, such as key individual statements, significant legal proceedings, crucial organizational responses, and vital media coverage.
 
-    Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects. Consider the significance of each fact in the context of the transcript and the broader discussion.
+    // Aim to gather comprehensive and detailed information about them, utilizing current, credible, and scientific sources. Explore the subjects in depth, examining their relevance to the main event, including legal, ethical, and societal aspects. Consider the significance of each fact in the context of the transcript and the broader discussion.
 
-    Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription, with an emphasis on those of higher priority. This approach ensures a thorough exploration of each significant aspect of the event or issue, with a focus on the most impactful elements.
-    Title: ${title},
-      Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}
+    // Finally, from this analysis, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription, with an emphasis on those of higher priority. This approach ensures a thorough exploration of each significant aspect of the event or issue, with a focus on the most impactful elements.
+    // Title: ${title},
+    //   Transcript: ${!text ? JSON.stringify(transcriptionJob.utterance) : text}
 
-      Lastly, please uses sources with this most credibility as priority`,
-    );
+    //   Lastly, please uses sources with this most credibility as priority`,
+    // );
 
-    results.push(...hydeResponse);
+    // results.push(...hydeResponse);
 
     console.log(results);
 
@@ -671,8 +752,8 @@ export class JobsService {
 
       By adhering to these steps, you ensure that each segment's evaluation is deeply informed by the Documents/Context and context provided, leading to a more accurate and comprehensive analysis.
 
-      After categorizing and explaining each point, provide an in-depth overall assessment of the content, labelled as overall assessment. This should include a discussion of any major inaccuracies, unsupported claims, or misleading information, an evaluation of the overall validity of the points presented, an exploration of the implications or potential effects of these points, and a review of any notable strengths or weaknesses in the arguments made. State the categories that appeared with regularity
-
+      After categorizing and explaining each segment, provide a detailed Overall Assessment of the content. This assessment should commence with a summarization of the predominant categories (such as 'Unverified Claims', 'Manipulative Opinions', etc.), emphasizing those that appear with regularity. It should then critically examine the narrative constructed by these segments, highlighting any major inaccuracies, unsupported claims, or instances of misleading information. Evaluate the overall validity of the narrative by contrasting the collective content with verified data and reputable sources, pinpointing both corroborated and contentious points. Delve into the implications or potential effects of the narrative, considering how the blend of factual, speculative, and manipulative elements might influence the audience's perception and understanding of the topic. Conclude by reviewing the notable strengths (such as factual accuracy, logical coherence) and weaknesses (like reliance on emotional persuasion, factual inconsistencies) of the arguments presented, providing a balanced and comprehensive critique of the content's reliability, biases, and impact on informed discourse.
+      
       Afterwards, we'll do a Consensus Check, labelled as Consensus Check. Start by immediately stating if the views or information presented align or do not align with recognized best practices, consensus, or research in the field. After this initial alignment statement, delve into the specifics. Evaluate the content to determine how closely it matches the prevailing consensus, recognized best practices, the most robust evidence available, and the latest, most accepted research. Summarize the primary sentiments or messages of the content. If these views are in accordance with well-established norms or knowledge, detail the reasons for this alignment. Conversely, if there are discrepancies, specify the reasons for non-alignment. Additionally, critically examine any strategies, advice, or opinions shared and assess how they compare with the consensus of leading experts, authoritative bodies, or reputable scientific research.
 
       Assess not just whether these strategies, advice, or opinions are widely accepted or popular, but also whether they align with the prevailing consensus among experts in the field.
@@ -1043,7 +1124,7 @@ export class JobsService {
       
       When formulating your queries, consider the variety and complexity of topics that might arise in the transcript. Tailor your queries to cover a wide range of potential areas, from specific factual verifications to broader contextual inquiries.
       
-      Finally, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. Organize these queries based on the relevance and importance of each topic within the context of the transcript. This approach ensures a thorough and adaptable exploration of each significant aspect of the event or issue, tailored to the specific content of the transcript. This list should be of the 3 best queries you can think of.
+      Finally, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. Organize these queries based on the relevance and importance of each topic within the context of the transcript. This approach ensures a thorough and adaptable exploration of each significant aspect of the event or issue, tailored to the specific content of the transcript. This list should be of the 6 best queries you can think of.
 
       {format_instructions} {title} {transcription}`),
       new OpenAI({
