@@ -6,6 +6,7 @@ import { RabbitmqModule } from './jobs/rabbitmq/rabbitmq.module';
 import { UtilsModule } from './utils/utils.module';
 import { ConfigModule } from '@nestjs/config';
 import { ScrapperModule } from './scrapper/scrapper.module';
+import { GoogleModule } from './google/google.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ScrapperModule } from './scrapper/scrapper.module';
     RabbitmqModule,
     UtilsModule,
     ScrapperModule,
+    GoogleModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -40,3 +40,4 @@ lerna-debug.log*
 /src/jobs/videos
 .env.local
 .env.production
+proxies.txt
