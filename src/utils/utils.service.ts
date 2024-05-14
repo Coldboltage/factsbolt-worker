@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SearchResult } from './utils.entity';
-import { PuppeteerWebBaseLoader } from 'langchain/document_loaders/web/puppeteer';
 import { MozillaReadabilityTransformer } from 'langchain/document_transformers/mozilla_readability';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { Document } from 'langchain/document';
@@ -17,7 +16,19 @@ import { AmendedSpeech, TranscriptionJob } from './utils.types';
 import { OpenAI } from 'langchain/llms/openai';
 import { CommaSeparatedListOutputParser } from 'langchain/output_parsers';
 import { RunnableSequence } from 'langchain/schema/runnable';
-import { from, mergeMap, concatAll, toArray, lastValueFrom } from 'rxjs';
+import {
+  from,
+  mergeMap,
+  concatAll,
+  toArray,
+  lastValueFrom,
+  concat,
+  concatMap,
+  delay,
+  of,
+  filter,
+  mergeAll,
+} from 'rxjs';
 const path = require('path');
 const youtubedl = require('youtube-dl-exec');
 const stripchar = require('stripchar').StripChar;
@@ -31,6 +42,7 @@ import { v4 as uuidv4 } from 'uuid';
 import weaviate from 'weaviate-ts-client';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { GoogleSearch } from '../google/entities/google.entity';
+const google = require('googlethis');
 
 const serp = require('serp');
 
@@ -231,119 +243,6 @@ export class UtilsService {
 
     await Promise.all(promises);
 
-    // for (const url of siteLinks) {
-    //   this.logger.log(`Documenting ${url}`);
-    //   if (
-    //     !url ||
-    //     url.includes('youtube') ||
-    //     url.includes('pdf') ||
-    //     url.includes('.PDF') ||
-    //     url.includes('.cgi') ||
-    //     url.includes('.download')
-    //   )
-    //     continue;
-
-    //   // const loader = new PuppeteerWebBaseLoader(url, {
-    //   //   launchOptions: {
-    //   //     headless: 'new',
-    //   //   },
-    //   // });
-
-    //   const loader = new CheerioWebBaseLoader(url);
-
-    //   // const loader = new CheerioWebBaseLoader(result);
-
-    //   let docs: Document<Record<string, any>>[];
-
-    //   try {
-    //     this.logger.debug('loading started');
-    //     docs = await loader.load();
-    //   } catch (error) {
-    //     // console.log(`${result} failed`);
-    //     continue;
-    //   }
-
-    //   this.logger.debug('loader completed');
-
-    //   // Check from splitter if that's the bottleneck for bit pdf files
-
-    //   const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
-    //     chunkSize: 600, // Roughly double the current estimated chunk size
-    //     chunkOverlap: 20, // This is arbitrary; adjust based on your needs
-    //     separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
-    //   });
-
-    //   const transformer = new MozillaReadabilityTransformer();
-
-    //   const sequence = splitter.pipe(transformer);
-
-    //   this.logger.debug('splitter completed');
-
-    //   let newDocuments;
-
-    //   // Invoking is the bottle neck learn what this is.
-
-    //   try {
-    //     newDocuments = await sequence.invoke(docs);
-    //   } catch (error) {
-    //     console.log('invoke broke');
-    //     continue;
-    //   }
-
-    //   this.logger.debug('invoke completed');
-
-    //   let filteredDocuments: Document[];
-
-    //   if (Array.isArray(newDocuments)) {
-    //     filteredDocuments = newDocuments.filter((doc: Document) => {
-    //       return doc.pageContent ? true : false;
-    //     });
-    //   }
-
-    //   if (!filteredDocuments) {
-    //     this.logger.error('no documents found');
-    //     continue;
-    //   }
-
-    //   this.logger.debug(
-    //     `Filtered Documents Amount: ${filteredDocuments.length}`,
-    //   );
-
-    //   if (filteredDocuments.length > 1200) {
-    //     this.logger.debug('too many documents to handle');
-    //     continue;
-    //   }
-
-    //   try {
-    //     // await vectorStore.delete({
-    //     //   filter: {
-    //     //     where: {
-    //     //       operator: 'Equal',
-    //     //       path: ['source'],
-    //     //       valueText: url,
-    //     //     },
-    //     //   },
-    //     // });
-    //     await vectorStore.addDocuments(filteredDocuments);
-    //     // await WeaviateStore.fromDocuments(
-    //     //   filteredDocuments,
-    //     //   new OpenAIEmbeddings({
-    //     //     batchSize: 512,
-    //     //   }),
-    //     //   {
-    //     //     client: this.client,
-    //     //     indexName: 'Factsbolt',
-    //     //     metadataKeys: ['source'],
-    //     //   },
-    //     // );
-    //     this.logger.debug('documents added to weaviate');
-    //   } catch (error) {
-    //     console.log(error);
-    //     console.log(`${url} failed`);
-    //   }
-
-    //   console.log('done');
-    // }
     this.logger.debug('Complete');
   }
 
@@ -635,34 +534,42 @@ export class UtilsService {
           `We've tracked psychological epidemics going back 300 years. Here's some of them. Multiple personality disorder. It cycles in society, disappears. Then there's one case, then it spreads like mad. Then there's multiple personality disorder everywhere. Then people get skeptical about it and it dies. And maybe it disappears for a whole generation or two. Then a case pops up, just does this. That's happened for 300 years. Cutting was a psychological epidemic. Bulimia was a psychological epidemic. Anorex was a psychological epidemic. And the rule, basically, is that if you confuse people about a fundamental element of their identity, then those who are already so confused they're barely hanging on are going to fall prey to that and all hell's going to break loose.`,
         ),
         output: JSON.stringify(`
-        Context Summary:
+        Context Summary: This is a summary about the transcript
+
+        Claims
+
+        Claim 1: This is the first Claim
+        Category: The Category to go into
+        Explaination: This claim is supported by a specific study/article/report from [Source Name], published on [Source Date], which states [Direct Quote or Paraphrased Information].
+
+        Analysis
 
         Segment 1 - Psychological Historian: Discussing Historical Patterns
         Speaker: Psychological Historian
         Text: "We've tracked psychological epidemics going back 300 years."
         Category: Verified Fact
-        Explanation: This statement aligns with the extensive history of psychological research. Historical documentation and academic studies have indeed traced the evolution and prevalence of various psychological conditions over centuries. This is evident in the evolution of diagnostic criteria and understanding of mental health disorders across different historical periods.
+        Explanation: This statement demonstrates a deep understanding of the historical and academic context surrounding psychological conditions. It reflects the extensive body of psychological research that has been conducted over the centuries, which includes a vast array of historical documentation and rigorous academic studies. These sources collectively trace the evolution and prevalence of mental health disorders, offering insights into how diagnostic criteria and societal understanding of these conditions have evolved. The acknowledgment of this evolution is crucial, as it highlights the dynamic nature of mental health research and how perceptions of psychological conditions have shifted across different historical periods. This alignment with a well-documented scientific trajectory qualifies the statement as a 'Verified Fact.' The categorization is substantiated by its basis in well-established academic literature and historical records, which provide a robust framework for understanding the development and transformation of mental health diagnoses. This comprehensive perspective not only supports the factual accuracy of the statement but also enhances its relevance and applicability in discussions about the current state and future directions of psychological research and practice.
         Source Verification: Academic texts on the history of psychology and historical studies of mental health trends.
         
         Segment 2 - Psychological Historian: Commenting on Disorder Patterns
         Speaker: Psychological Historian
         Text: "Multiple personality disorder. It cycles in society, disappears. Then there's one case, then it spreads like mad."
         Category: Grounded Speculation
-        Explanation: The cyclical nature of the recognition of Dissociative Identity Disorder (formerly known as multiple personality disorder) aligns with some historical analyses but lacks comprehensive empirical data. The idea of "spreading" mental health disorders could be interpreted as reflecting societal and diagnostic trends rather than actual prevalence rates. This interpretation is speculative but grounded in the observed phenomena of changing diagnostic trends.
+        Explanation: This statement insightfully captures the nuanced and evolving understanding of Dissociative Identity Disorder (DID), previously known as multiple personality disorder, highlighting its cyclical recognition within the mental health community. The claim that the recognition of DID aligns with some historical analyses underscores a recognition of the fluctuating attention and legitimacy given to this disorder through different eras, reflecting shifts in psychiatric paradigms and societal attitudes towards mental health disorders. While there is historical documentation that can corroborate the changing views and diagnoses of DID, the statement also touches on a critical point: the comprehensive empirical data required to fully substantiate the cyclical nature of its recognition remains inadequate. This gap indicates a reliance on interpretative and qualitative historical data rather than quantitative evidence.
         Source Verification: Comparative studies of mental health diagnoses over time, literature on the sociology of mental health.
         
         Segment 3 - Psychological Historian: Observing Behavioral Trends
         Speaker: Psychological Historian
         Text: "Cutting was a psychological epidemic. Bulimia was a psychological epidemic. Anorexia was a psychological epidemic."
         Category: Grounded Opinion
-        Explanation: The statement reflects the observed increase in reported cases and societal awareness of these behaviors. The use of the term "epidemic" might be metaphorical, intending to highlight the significant rise in awareness and diagnosis rather than suggesting a literal spread like a contagious disease. This aligns with data on the increasing prevalence and media attention to these issues, especially in certain historical periods.
+        Explanation: This statement articulates an increase in the reported cases and societal awareness of certain behaviors, potentially referring to mental health issues or disorders, with a critical evaluation of the terminology used. The application of the term 'epidemic' in this context is scrutinized for its metaphorical usage, which is not uncommon in discussions about non-communicable conditions to emphasize a dramatic increase in recognition or diagnosis. The speaker’s intention behind using 'epidemic' seems to be to underscore the heightened public and medical acknowledgment of these issues, rather than to imply a literal, infectious spread akin to that of a contagious disease.
         Source Verification: Epidemiological data on self-harm and eating disorders, media analysis of reporting on these conditions.
         
         Segment 4 - Psychological Historian: Theorizing on Identity and Mental Health
         Speaker: Psychological Historian
         Text: "And the rule, basically, is that if you confuse people about a fundamental element of their identity, then those who are already so confused they're barely hanging on are going to fall prey to that and all hell's going to break loose."
         Category: Grounded Opinion
-        Explanation: This theory posits a direct link between identity confusion and exacerbated mental health issues. While there is psychological literature supporting the impact of identity on mental health, the statement might oversimplify complex interactions of various factors in mental health. The "rule" mentioned is not an established psychological principle but rather a hypothesis that finds some support in psychological theories on identity.
+        Explanation: This statement discusses a theory that suggests a direct correlation between identity confusion and the exacerbation of mental health issues. It touches upon a significant topic within the realm of psychological study, wherein the state of one's identity—how one perceives oneself and is perceived by others—can profoundly impact mental health outcomes. While there is indeed a body of psychological literature that supports the influence of identity factors on mental health, suggesting that disturbances in one's identity perception can lead to or worsen mental health struggles, the assertion presented here warrants careful consideration.
         Source Verification: Psychological studies on identity development and its impact on mental health.
 
         Consensus Check:
@@ -699,6 +606,35 @@ export class UtilsService {
           `The thing that worries me the most about the United States in general is when otherwise free people become convinced that the primary way to adjudicate problems is through government action. The moment you've decided I don't go to my neighbor and solve this on our own, or the moment you've decided that we don't settle this within the marketplace, that is by getting a law passed at the expense of somebody else for my benefit, and we use. The moment that becomes the norm within a society, you will abandon freedom for control of power. Because if that becomes the primary way that we solve our differences, then we will fight horribly and mercilessly against people that we used to care about in order to control that mechanism.`,
         ),
         output: `
+        Context Summary: This is a summary about the transcript
+
+        Claims
+
+        Claim 1: This is the first Claim
+        Category: The Category to go into
+        Explaination: This claim is supported by a specific study/article/report from [Source Name], published on [Source Date], which states [Direct Quote or Paraphrased Information].
+        Claim 2: This is the first Claim
+        Category: The Category to go into
+        Explaination: This claim is supported by a specific study/article/report from [Source Name], published on [Source Date], which states [Direct Quote or Paraphrased Information].
+
+        Claim 3: This is the first Claim
+        Category: The Category to go into
+        Explaination: This claim is supported by a specific study/article/report from [Source Name], published on [Source Date], which states [Direct Quote or Paraphrased Information].
+
+        Claim 4: This is the first Claim
+        Category: The Category to go into
+        Explaination: This claim is supported by a specific study/article/report from [Source Name], published on [Source Date], which states [Direct Quote or Paraphrased Information].
+
+        Claim 5: This is the first Claim
+        Category: The Category to go into
+        Explaination: This claim is supported by a specific study/article/report from [Source Name], published on [Source Date], which states [Direct Quote or Paraphrased Information].
+
+        Claim 6: This is the first Claim
+        Category: The Category to go into
+        Explaination: This claim is supported by a specific study/article/report from [Source Name], published on [Source Date], which states [Direct Quote or Paraphrased Information].
+
+        Analysis:
+
         Speaker A - Libertarian Critic: Discussing Government Intervention
         Speaker: Libertarian Critic
         Text: "The thing that worries me the most about the United States in general is when otherwise free people become convinced that the primary way to adjudicate problems is through government action."
@@ -825,10 +761,7 @@ export class UtilsService {
     return response;
   }
 
-  async getAllClaimsFromTranscript(
-    transcriptionJob: TranscriptionJob,
-    title: string,
-  ) {
+  async getAllClaimsFromTranscript(text: string, title: string) {
     // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
     const parserList = new CommaSeparatedListOutputParser();
 
@@ -856,7 +789,7 @@ export class UtilsService {
     ]);
 
     const test = await chain.invoke({
-      transcription: transcriptionJob.text,
+      transcription: text,
       title,
       format_instructions: parserList.getFormatInstructions(),
     });
@@ -873,11 +806,27 @@ export class UtilsService {
     searchTerms: string[],
     concurrencyLimit: number,
   ): Promise<string[]> {
+    const fixedDelay = 100; // Fixed delay for each request
+    let currentDelay = 0; // Initialize current delay
+
     const searchTermObservable = from(searchTerms).pipe(
-      // mergeMap((term) => this.searchTermToUrl(term), concurrencyLimit),
-      mergeMap((term) => this.googleSearch(term), concurrencyLimit),
-      concatAll(),
-      toArray(),
+      mergeMap((term, index) => {
+        const delayedObservable = of(term).pipe(
+          delay(currentDelay), // Apply the current delay
+          concatMap(() => this.googleSearch(term)), // Perform the search after the delay
+        );
+
+        // Increment the delay for the next term, or reset if at the concurrency limit
+        if ((index + 1) % concurrencyLimit === 0) {
+          currentDelay = 0; // Reset delay after each batch of concurrencyLimit
+        } else {
+          currentDelay += fixedDelay; // Increment delay for the next request
+        }
+
+        return delayedObservable;
+      }, concurrencyLimit),
+      mergeAll(), // Flatten the results into a single array
+      toArray(), // Collect all results
     );
 
     return lastValueFrom(searchTermObservable);
@@ -890,6 +839,9 @@ export class UtilsService {
         q: query,
         filter: 0,
         pws: 0,
+        delay: 4000,
+        retry: 3,
+        num: 4,
       },
       // proxy: {
       //   server: process.env.SERP_SERVER,
@@ -899,12 +851,51 @@ export class UtilsService {
       num: 3,
     };
     console.log('Interesting');
-    const links: GoogleSearch[] = await serp.search(options);
-    const filterLinks = links
-      .map((link) => {
-        return link.url;
-      })
+    try {
+      const links: GoogleSearch[] = await serp.search(options);
+      const filterLinks = links
+        .map((link) => {
+          return link.url;
+        })
+        .filter((_, index) => index < 3);
+      return filterLinks;
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  async googleSearchThis(query: string): Promise<string[]> {
+    const options = {
+      page: 0,
+      safe: false, // Safe Search
+      parse_ads: false, // If set to true sponsored results will be parsed
+    };
+
+    const response = await google.search(query, options);
+    return response.results
+      .map((link) => link.url)
       .filter((_, index) => index < 3);
-    return filterLinks;
+  }
+
+  async youtubeSummary(mission: string) {
+    const promptTemplate = `Create a concise summary in a single paragraph, focusing on the following points, and ensure it does not exceed 100 words:
+
+    Main Claim and Veracity Assessment:
+    
+    Mention the main claim and assess its veracity as verified, unverified, or speculative. Comment briefly on the evidence and consensus among experts.
+    Nature of Discussion and Critical Viewpoint:
+    
+    Describe the nature of the discussion and the main themes, noting the level of substantiation.
+    Call for Critical Examination and Approach:
+    
+    Highlight the need for critical examination and suggest how to approach the claims, mentioning if further inquiry or consultation of additional sources is advised.
+    Source Acknowledgment:
+    
+    Conclude by acknowledging that the summary is based on a comprehensive fact-checking mission.`;
+  }
+
+  async twitterSummary(mission: string) {
+    const promptTemplate = `Please provide a fact-checking summary for the given content. Determine its trustworthiness and explain the status (Verified/Partially Verified/Unverified) along with the reasons for the chosen status within 280 characters.
+    `;
   }
 }

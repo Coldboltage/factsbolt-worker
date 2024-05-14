@@ -65,6 +65,7 @@ export class RabbitmqService implements OnModuleInit {
   async textOnlyJob(data: TextOnlyDto) {
     // const createJobDto = new CreateJobDto();
     // createJobDto.link = data;
+    console.log(data);
     return this.jobsService.factCheckLang({ ...data });
   }
 }
