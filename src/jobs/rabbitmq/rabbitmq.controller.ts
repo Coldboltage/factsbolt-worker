@@ -10,6 +10,7 @@ import { RabbitmqService } from './rabbitmq.service';
 import { CreateRabbitmqDto } from './dto/create-rabbitmq.dto';
 import { UpdateRabbitmqDto } from './dto/update-rabbitmq.dto';
 import { TextOnlyDto } from '../dto/text-only.dto';
+const fs = require('fs').promises; // Notice the '.promises'
 
 @Controller()
 export class RabbitmqController {
@@ -84,6 +85,7 @@ export class RabbitmqController {
     console.log('Received newJob event with data:', data);
     try {
       const result = await this.rabbitmqService.textOnlyJob(data);
+      saveJsonToFile('./output.txt', result);
       // acknowledge the message after processing
       channel.ack(originalMsg);
     } catch (error) {
@@ -91,5 +93,15 @@ export class RabbitmqController {
       // negatively acknowledge the message in case of error
       channel.nack(originalMsg);
     }
+  }
+}
+
+async function saveJsonToFile(filePath, jsonData) {
+  try {
+    const jsonString = JSON.stringify(jsonData, null, 2);
+    await fs.writeFile(filePath, jsonString);
+    console.log('File has been saved');
+  } catch (err) {
+    console.error('Error writing the file:', err);
   }
 }

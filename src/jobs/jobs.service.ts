@@ -1,12 +1,4 @@
-import { TensorFlowEmbeddings } from 'langchain/embeddings/tensorflow';
-import {
-  BadGatewayException,
-  ImATeapotException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateJobDto } from './dto/create-job.dto';
 import { UpdateJobDto } from './dto/update-job.dto';
 import {
@@ -291,40 +283,11 @@ export class JobsService {
       },
     );
 
-    // const vectorStore = new WeaviateStore(new OpenAIEmbeddings(), {
-    //   client,
-    //   indexName: 'Factsbolt',
-    //   metadataKeys: ['source'],
-    // });
-
-    // const vectorStore = new WeaviateStore(
-    //   new HuggingFaceInferenceEmbeddings({
-    //     model: 'WhereIsAI/UAE-Large-V1',
-    //   }),
-    //   {
-    //     client,
-    //     indexName: 'Factsbolt',
-    //     metadataKeys: ['source'],
-    //   },
-    // );
-
-    // const response = await client.graphql
-    //   .aggregate()
-    //   .withClassName('Factsbolt')
-    //   .withFields('meta { count }')
-    //   .do();
-    // console.log(response.data.Aggregate.Factsbolt);
-
-    // throw new Error();
-
     const llm = new OpenAI({ temperature: 0, modelName: 'gpt-4-1106-preview' });
 
     // const baseCompressor = LLMChainExtractor.fromLLM(model);
 
     // First Phase
-    // const searchTerm = !text
-    //   ? await this.transcriptSearchGen(transcriptionJob, title)
-    //   : await this.generalTextSearchGen(text, title);
 
     let searchResultFilter = [];
 
@@ -333,7 +296,10 @@ export class JobsService {
     //   title,
     // );
 
-    const searchTerm = await this.combinedClaimSetup(transcriptionJob, title);
+    const searchTerm = !text
+      ? await this.combinedClaimSetup(transcriptionJob.text, title)
+      : await this.combinedClaimSetup(text, title);
+    // const searchTerm = await this.combinedClaimSetup(transcriptionJob, title);
 
     // searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
     // searchTerm.push(...claimCheck);
@@ -361,54 +327,58 @@ export class JobsService {
 
       const workerUUID = uuid();
 
-      await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json', // Include or omit based on your requirements
-        },
-      });
+      if (process.env.SCRAPPER_QUEUE === 'true') {
+        await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json', // Include or omit based on your requirements
+          },
+        });
 
-      let status = false; // Assuming 'status' is declared somewhere in your scope
+        let status = false; // Assuming 'status' is declared somewhere in your scope
 
-      await new Promise((resolve) => {
-        const pollStatus = async (id: string) => {
-          console.log('polling loop');
-          try {
-            const response = await axios.get(
-              `${process.env.API_BASE_URL}/scrapper/${id}`,
-            );
-            const data: Scrapper = response.data;
-            if (data.status === ScrapperStatus.READY) {
-              status = true;
-              resolve('lol'); // Resolve the promise when condition is met
-            } else {
-              console.log(`Status is ${data.status}`);
-              setTimeout(() => pollStatus(id), 5000);
+        await new Promise((resolve) => {
+          const pollStatus = async (id: string) => {
+            console.log('polling loop');
+            try {
+              const response = await axios.get(
+                `${process.env.API_BASE_URL}/scrapper/${id}`,
+              );
+              const data: Scrapper = response.data;
+              if (data.status === ScrapperStatus.READY) {
+                status = true;
+                resolve('lol'); // Resolve the promise when condition is met
+              } else {
+                console.log(`Status is ${data.status}`);
+                setTimeout(() => pollStatus(id), 5000);
+              }
+            } catch (error) {
+              console.error('Error in polling:', error);
+              // Depending on your error handling strategy, you may choose to reject the promise here
+              // reject(error);
             }
-          } catch (error) {
-            console.error('Error in polling:', error);
-            // Depending on your error handling strategy, you may choose to reject the promise here
-            // reject(error);
-          }
-        };
+          };
 
-        pollStatus(workerUUID); // Initial call to start polling
-      });
+          pollStatus(workerUUID); // Initial call to start polling
+        });
+      }
 
       searchResultFilter = await this.utilsService.processSearchTermsRxJS(
         searchTerm,
         5,
       );
 
-      await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json', // Include or omit based on your requirements
-        },
-        data: {
-          status: ScrapperStatus.DONE,
-        },
-      });
+      if (process.env.SCRAPPER_QUEUE === 'true') {
+        await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json', // Include or omit based on your requirements
+          },
+          data: {
+            status: ScrapperStatus.DONE,
+          },
+        });
+      }
     }
 
     // let searchResultFilter = this.utilsService.extractURLs(searchResults);
@@ -440,17 +410,17 @@ export class JobsService {
       );
     }
 
-    const vectorStoreSearchQuery = new WeaviateStore(
-      new CohereEmbeddings({
-        // model: 'embed-english-v3.0',
-        inputType: 'search_query',
-      }),
-      {
-        client,
-        indexName: 'Factsbolt',
-        metadataKeys: ['source'],
-      },
-    );
+    // const vectorStoreSearchQuery = new WeaviateStore(
+    //   new CohereEmbeddings({
+    //     // model: 'embed-english-v3.0',
+    //     inputType: 'search_query',
+    //   }),
+    //   {
+    //     client,
+    //     indexName: 'Factsbolt',
+    //     metadataKeys: ['source'],
+    //   },
+    // );
 
     const baseCompressorModel = new OpenAI({
       temperature: 0,
@@ -462,16 +432,16 @@ export class JobsService {
     const baseCompressor = LLMChainExtractor.fromLLM(baseCompressorModel);
 
     // NORMAL VECTORSTORE
-    // const vectorStoreRetriever = new ContextualCompressionRetriever({
-    //   baseCompressor,
-    //   baseRetriever: vectorStore.asRetriever(), // Your existing vector store
-    // });
-
-    // COHERE SPECIFIC
     const vectorStoreRetriever = new ContextualCompressionRetriever({
       baseCompressor,
-      baseRetriever: vectorStoreSearchQuery.asRetriever(), // Your existing vector store
+      baseRetriever: vectorStore.asRetriever(), // Your existing vector store
     });
+
+    // COHERE SPECIFIC
+    // const vectorStoreRetriever = new ContextualCompressionRetriever({
+    //   baseCompressor,
+    //   baseRetriever: vectorStoreSearchQuery.asRetriever(), // Your existing vector store
+    // });
 
     let results: DocumentInterface<Record<string, any>>[] = [];
 
@@ -559,49 +529,64 @@ export class JobsService {
     //     }`,
     // );
 
-    const chain = loadQAStuffChain(model, {});
+    const chain = loadQAStuffChain(model, { verbose: false });
 
-    const fullResults = [...results];
+    const fullResults = results.map((doc) => {
+      return {
+        ...doc,
+        pageContent: `${doc.pageContent}\nSource: ${doc.metadata.source}`,
+      };
+    });
 
     const example = this.utilsService.promptExample();
 
     // const breakdownStatements = this.utilsService.breakdownTranscript(transcriptionJob.utterance)
 
-    const result = await chain.call({
+    const result = await chain.invoke({
       input_documents: fullResults,
       question: `
-      Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the 2023 training data. 
+      Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the December 2023 training data. 
             
       Labelled Context Summary, create a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
+
+      Make Explicit Citations: Include direct references or citations from the Documents/Context in your explanations. This provides clarity on how the Documents/Context influenced the categorization and supports the analytical process.
+
+      After the context summary, carefully review the transcript and identify key assertions or statements that form the basis of the discussion. For each identified statement, rephrase it into a formal claim that clearly encapsulates the assertion in precise, official language. Categorize each rephrased claim according to predefined standards such as Verified Fact, Grounded Speculation, or Misleading Fact, ensuring each is appropriately supported with direct citations from provided documents or relevant context. This will formalize the claims for a structured analysis and ensure they are distinctly recognized and evaluated on their merits.
       
-      In your analysis, it's crucial to treat each sentence or question in the transcript as a separate segment for evaluation. Follow these guidelines:
+      Afterwards, do an analysis. In your analysis, it's crucial to treat each sentence or question in the transcript as a separate segment for evaluation. Follow these guidelines:
 
       Directive for Exclusive Use of Defined Categories:
-      "In this analysis, strictly adhere to the categories and their definitions as provided below. Each statement in the transcript must be evaluated and categorized exclusively based on these definitions. Refrain from using any external or previous categorization frameworks. The goal is to ensure that the analysis is consistent, accurate, and aligned solely with the provided category definitions."
-
+      In this analysis, strictly adhere to the categories and their definitions as provided below. Each statement in the transcript must be evaluated and categorized exclusively based on these definitions. Refrain from using any external or previous categorization frameworks.
+      
       CATEGORY DEFINITION
 
-      "Verified facts are statements that present clear facts or claims about reality. For every verified fact, evaluation involves referencing training data up to April 2023 and considering any documented context supplied. Verification must include corroboration from at least one neutral, independent source, in addition to any other source. This can be done by:
+      "Verified facts are statements that present clear facts or claims about reality. For every verified fact, evaluation involves referencing training data up to April 2023 and considering any documented context supplied. Verification must include corroboration from at least one neutral, independent source, in addition to any other source. Explicitly cite each source used for verification by name and details. For every verified fact, the analysis must specify:
 
-      a) Quoting directly from context documents/context, including at least one neutral source, to serve as a citation.
-      b) Referencing training data or external information, providing a specific reference akin to: 'As found in a study from [Specific Year] in [Specific Source Name],' or 'According to [Authoritative Source],' ensuring at least one of these is a neutral source.
+      a) The direct quote from the specific context document or source, including its name and relevant details (e.g., 'According to [Source Name], dated [Source Date], which states [specific fact]').
+      b) Avoid vague references like 'aligns with the context documents.' Always provide a direct citation and explain how this source supports the fact, discussing the factual accuracy, source credibility, and potential implications or applications in light of this specific source."
 
-      Facts or claims must align with well-established knowledge and be corroborated by credible sources, including at least one independent and neutral source. When a statement aligns with training data and documented context, elaborate on why it is considered a verified fact, discussing its factual accuracy, source credibility, and potential implications or applications. If the fact is part of a larger narrative with a specific intent (e.g., manipulative, speculative), this context should be noted, with emphasis on neutral source corroboration to ensure unbiased verification."
+      Facts or claims must align with well-established knowledge and be corroborated by credible sources, including at least one independent and neutral source. Each verified fact must include a direct citation from the source used for verification.
 
+      "For every instance of source verification, explicitly avoid phrases like 'aligns with context documents' or 'based on the documents provided.' Instead, detail the specific source by name, date, and publication, such as 'As detailed by a report in The New York Times on [date], which states [specific fact].' Include a relevant quote or data point from this source and elucidate how it substantiates the claim being made."
       Within the source verification, specifically reference the actual source used for verification, providing clarity on how it supports the fact.
 
-      Evidence-Limited Theoretical Claim: This category is for statements grounded in theoretical models or hypotheses that are logically coherent but lack extensive empirical verification. It involves assessing the claim's alignment with established principles and its theoretical basis, while noting the absence or limitations of empirical evidence. Verification includes quoting authoritative theoretical sources and, where available, cross-referencing with empirical data. The analysis focuses on the theoretical strengths of the claim and its potential implications, highlighting the need for further empirical research to substantiate its validity. This category underscores the distinction between theoretically sound ideas and those backed by robust empirical evidence.
+      "Ensure that source verification in every analysis includes a direct reference to the actual document or publication used. Specify the source clearly, for example, 'Confirmed by data from an IEEE journal article dated [date], which demonstrates [specific data].' Provide an explanation that connects the source directly to the fact it supports, emphasizing the relevance and authority of the source in verifying the claim."
       
-      Partially Verified" applies to statements or claims where there is some supporting evidence or credible sources that partially substantiate the claim, albeit not comprehensively. However, this category should be carefully distinguished from speculative assertions. If a statement, despite having some factual basis, leans significantly towards speculation or theoretical interpretation, especially in its overarching implication or conclusion, it should not be classified as 'Partially Verified'. Instead, such statements should be categorized as 'Grounded Speculation' or another more fitting category. 'Partially Verified' is reserved for claims that, while not fully corroborated due to limited evidence, maintain a predominant basis in verifiable facts or credible references, and do not extend into speculative territory beyond what the partial evidence can reasonably support
+      Partially Verified applies to statements or claims where there is supporting evidence or credible sources that substantiate parts of the claim, albeit not comprehensively. This category is specifically intended for situations where the available documents, context, or sources provide clear support for some elements of the claim but not for others. In cases where the documents or credible sources substantiate certain aspects of a claim, these aspects should be clearly identified and stated as verified within the analysis. Meanwhile, aspects of the claim that lack such support should be identified and described as unverified or speculative. The distinction between verified and speculative parts should be explicit, ensuring that the analysis accurately reflects the evidence base. Claims are categorized under 'Partially Verified' when the substantiated parts are clearly supported by verifiable facts or credible references. Components of the claim extending into speculative territory without direct support from the provided documents or sources should be noted as such. This clear delineation helps in maintaining the integrity of the categorization process and ensures that each part of a claim is accurately represented according to the available evidence.
+
+      Trusted Source Unobtainable is applied to claims or statements that originate from credible reports, observations, or assertions and have a degree of initial credibility, often issued by sources that are recognized for their authority or expertise in the subject matter. However, these claims lack the substantiation from a specific, recognized, authoritative source that is known to exist but is currently inaccessible or has not provided the necessary verification. This categorization acknowledges the interim nature of such information. It recognizes that while the claims may have a foundation in reality and are approached with the seriousness they merit, their full validation is hindered by the unavailability of the key source capable of providing definitive verification.
       
       Misleading Fact: This category is for identifying statements that, while based on verified facts or claims up to April 2023 from credible sources, include elements that could be misleading or taken out of context. When labeling a statement as a 'Misleading Fact,' it is crucial to first affirm the overall factual accuracy of the core claim, using training data, documented context, or credible public sources. The analysis should then focus on identifying and explaining specific aspects of the statement that are potentially misleading or misrepresented. This involves discussing which particular elements or phrasings in the statement contribute to a misleading narrative and why they are considered manipulative in the given context. Additionally, it is important to clarify what additional information or perspective is necessary to fully understand these elements and to rectify any misconceptions. The evaluation should also consider the potential utility and harm of these manipulated elements, discussing how they could influence interpretations or decisions in various scenarios. It is equally important to include counterpoints or alternative perspectives that add valuable context to the specific manipulated elements of the fact, especially those supported by training data or other credible sources. The goal is to guide the audience towards an informed understanding by distinguishing between the verified core of the claim and the contextually manipulated aspects of its presentation.
 
-      Unverified Claims: Identify statements presented as facts or claims about reality that currently lack verifiable evidence or reliable sources for substantiation. Label these as 'Unverified Claim.' In your analysis, explain why the statement remains unverified, highlighting the limitations of the available resources or search capabilities that might have led to this conclusion. This includes acknowledging the importance of neutral and reliable sources for the verification process. Note that while the claim remains unverified at the moment, it does not necessarily mean it is false — further research or future information could potentially verify it. Discuss the potential implications of the claim, including how it might be used or misused in different contexts if accepted without verification, and encourage the audience to consider the claim with a critical perspective, acknowledging the current limitations in verifying its accuracy and the need for objective, evidence-based information sources.
+      Unverified Claims: Refers to statements lacking sufficient verification from independent and reliable sources. Each element of a multi-part claim should be individually assessed; if any part remains unsubstantiated, the entire claim retains an unverified status until all components can be independently corroborated. Verification requires direct citations from credible sources that specifically support or refute each aspect of the claim. It's crucial to discuss the implications of accepting unverified claims, highlighting potential misuse in various contexts and encouraging critical scrutiny to uphold informational integrity. This approach ensures that claims are categorized accurately based on the extent of their substantiation and the reliability of their supporting evidence.
+      
       Factually Incorrect: This category applies to statements, claims, opinions, or speculations that either directly contradict current, well-established knowledge and empirical evidence, or represent a significant misunderstanding or misrepresentation of such knowledge. This includes not only statements that are demonstrably false but also those that, while possibly grounded in personal experience or belief, are at odds with established scientific consensus or factual understanding. The key aspect of this category is the presence of a clear conflict between the statement and established facts or scientific understanding, regardless of whether the statement is framed as a personal belief or experience.
 
-      Unsupported Opinion: This category is for opinions that lack a basis in verified facts or empirical evidence. These opinions may not necessarily be in direct conflict with established facts (like flat earth theories would be), but they also do not align with or are supported by current empirical knowledge. This category helps to differentiate opinions that are not inherently harmful or manipulative but are also not supported by factual evidence.
+      Unsupported Opinion: is reserved for statements that do not have immediate, direct backing from verified facts or empirical evidence. This categorization is critical for maintaining a clear distinction between substantiated and unsubstantiated claims. However, it's important to apply this label judiciously, recognizing that the context surrounding a statement often provides additional layers of meaning and support. When evaluating statements, especially those that articulate broad perspectives, official positions, or societal principles, it is essential to consider the wider context. This context may include established practices, legal frameworks, historical precedents, or institutional norms that indirectly support the statement. Such indirect support, though not empirical or directly cited, contributes to a more nuanced understanding of the statement's validity. Therefore, before labeling a statement as Unsupported Opinion, a thorough evaluation of both the immediate and broader context is necessary. This ensures that the categorization accurately reflects the depth of support for the statement and acknowledges the complex nature of evidence and substantiation in various domains. If the broader context offers substantial support, alternative categorizations that recognize this indirect support may be more appropriate, ensuring a balanced and comprehensive evaluation process.
+      
+      Well-Founded Opinion: This category is for opinions that align with established principles, recognized wisdom, or general best practices in a particular field, even if they are not explicitly supported by specific empirical data in the statement. These opinions reflect a general understanding or acceptance of certain concepts that are widely regarded as effective or true based on collective experience or consensus, rather than on direct empirical evidence. Additionally, this category includes statements that represent official stances, policies, or declared principles of entities such as governments, corporations, or other authoritative organizations. These statements are considered well-founded when they are reflective of the entity's established legal frameworks, policy decisions, international commitments, or recognized operational principles, even if these foundations are not detailed within the immediate statement
 
-      Well-Founded Opinion: This category is for opinions that align with established principles, recognized wisdom, or general best practices in a particular field, even if they are not explicitly supported by specific empirical data in the statement. These opinions reflect a general understanding or acceptance of certain concepts that are widely regarded as effective or true based on collective experience or consensus, rather than on direct empirical evidence.
+      Reasonable Opinion: This category is assigned to statements or judgments that, while not directly backed by empirical data within the context of the statement itself, are supported by reasonable assumptions, industry trends, or recognizable patterns of factual developments. These opinions are grounded in a rational interpretation of available information or observable market dynamics, which lend credence to the speaker's viewpoint. Reasonable opinions often reflect informed speculations or forecasts that align with general knowledge and insights from reputable sources, even if specific empirical evidence cited directly within the statement is lacking. When labeling a statement as a Reasonable Opinion, the analysis should consider the broader context and connect the opinion to documented trends, expert analyses, or recognized shifts in relevant fields. This ensures that the opinion, while potentially subjective, is based on a foundation of reasoned judgment and industry insight, making it a credible interpretation or perspective rather than mere conjecture.
       
       Fundamentally Confirmed: This categorization applies to statements where the core idea or principal assertion is validated through credible and independent sources, as per the latest known data, including training data up to April 2023. The term 'Fundamentally Confirmed' specifically highlights that the foundational aspect of the claim is verified and factual. However, it simultaneously brings attention to the fact that certain details, specific methods, or subsidiary elements within the claim have not been verified or may remain inconclusive. This classification is designed to explicitly differentiate between the aspects of the claim that are substantiated and those that are not, thereby providing a clear understanding of the extent of verification. The aim is to affirm the verified truth of the central claim while maintaining transparency about the unverified status of specific details, ensuring an informed and nuanced understanding of the claim's overall veracity.
 
@@ -656,7 +641,7 @@ export class JobsService {
       Text: "[Exact quote from the segment]"
       Category: Assign an appropriate category from the Category enumeration.
       Explanation: Provide a detailed explanation for the categorization, considering the context and content of the statement.
-      Source Verification: Detail the source verification, particularly for factual claims. Include references to credible sources or training data as necessary.
+      Source Verification: Each factual claim must be supported with a direct citation from a specifically identified source. For instance, state the source as, 'According to an Nvidia white paper released on [date]', or 'As reported by TechCrunch on [date] discussing the Blackwell chip’s capabilities.' Avoid referencing general sources such as 'the provided documents' or 'context,' ensuring each citation is accurately traceable to its origin.
       Continuous Segmentation:
 
       Continue this structured analysis process for each sentence or question in the transcript, ensuring clarity and focus on each individual point.
@@ -673,14 +658,14 @@ export class JobsService {
       Speaker: Financial Novice
       Text: "I don't know about stocks and shares."
       Category: Unsupported Opinion
-      Explanation: The speaker expresses a personal lack of knowledge about stocks and shares, categorizing this as an opinion rather than a verified fact.
+      Explanation: In the given segment, the speaker candidly acknowledges a personal gap in understanding regarding the intricacies of stocks and shares. This statement is self-reflective and explicitly indicates a subjective viewpoint, representing the speaker's own assessment of their knowledge. By its nature, this acknowledgment does not present any verifiable information or empirical data that could be substantiated through external sources. Instead, it is a clear expression of personal experience and perception. Consequently, this statement is categorized as an 'Unsupported Opinion.' This category is appropriate because it directly reflects the speaker's subjective and personal experience without claiming factual accuracy or objective truth. The lack of empirical backing and the purely personal context of the statement mean it cannot be verified through conventional means of fact-checking, nor does it provide a basis for broader generalization or application beyond the speaker's individual circumstance.
       Source Verification: N/A
       Segment 2 - Investment Guide: Recommending Strategies
 
       Speaker: Investment Guide
       Text: "Invest in a diversified portfolio for long-term growth."
       Category: Well-Founded Opinion
-      Explanation: The speaker offers investment advice based on common financial principles, suggesting a strategy widely recognized as effective for long-term growth.
+      Explanation: The speaker recommends an investment strategy centered around diversification to promote long-term growth. This advice aligns with well-established financial principles that advocate for diversification as a means to mitigate risk while capturing potential gains across different sectors and asset classes. The principle of diversification is supported by a broad consensus among financial experts and is grounded in fundamental investment theories like Modern Portfolio Theory, which demonstrates the benefits of diversifying investments to reduce volatility and improve returns over time. As such, this statement can be categorized as a 'Well-Founded Opinion.' This categorization is justified because the advice draws directly from widely accepted financial practices and theories that have been empirically validated through extensive research and historical market analysis. The recommendation leverages general financial wisdom that is recognized as effective by the financial community, making it a reliable strategy for investors seeking to build and preserve wealth over long periods. By advising on a diversified portfolio, the speaker encapsulates a cornerstone concept of investment strategy, thereby providing sound, practical advice based on established financial knowledge..
       Source Verification: Supported by financial literature and expert advice.
 
       [Repeat the structure for the next sentence]
@@ -691,6 +676,8 @@ export class JobsService {
       In the process of categorizing each statement, it is imperative to undertake a deliberative and comparative evaluation. This involves:
 
       Potential Category Consideration: Initially, identify all possible categories that could apply to the statement based on its content and context.
+
+      For every segment/claim analyzed, meticulously justify the category assigned by referencing specific evidence or sources. Offer a comprehensive exploration of these sources, discussing their credibility and relevance in detail. Additionally, provide an in-depth examination of the contextual background and potential broader impacts of the statement, including any societal, political, or economic implications. Ensure that each explanation delves into the nuances of the topic, including possible counterarguments and perspectives, to furnish a well-rounded and thoroughly substantiated analysis.
 
       Comparative Evaluation: Compare the statement against the definitions and criteria of these potential categories. This step should involve a careful examination of how well the statement aligns with each category's definition and intent.
 
@@ -738,8 +725,6 @@ export class JobsService {
 
       Ensure Documents/Context-Centric Verification: Actively cross-reference each segment against the information provided in the Documents/Context. Explicitly mention how the documents corroborate, contradict, or enhance the understanding of the statement being analyzed.
 
-      Make Explicit Citations: Include direct references or citations from the Documents/Context in your explanations. This provides clarity on how the Documents/Context influenced the categorization and supports the analytical process.
-
       Assess Contextual Relevance: Evaluate the broader context given by the Documents/Context and consider how this context affects the interpretation of the statement. Determine if it provides additional insights or challenges the initial understanding.
 
       Balance Document Evidence with Other Credible Sources: While Documents/Context are key, balance their information with other credible sources, particularly for verified facts. This approach ensures a well-rounded analysis.
@@ -750,11 +735,13 @@ export class JobsService {
 
       Incorporate Diverse Perspectives: Make sure the Documents/Context are not the sole source of perspective. When relevant, include other viewpoints or interpretations to gain a more holistic understanding of the statement.
 
+      Explain document context stance: This directive ensures that the user understands the relevance of the document context in assessing claims. It clarifies whether the context supports or contradicts the claim, aiding in the determination of its verification status. This is applied uniformly across all claims and analysis segments.
+
       By adhering to these steps, you ensure that each segment's evaluation is deeply informed by the Documents/Context and context provided, leading to a more accurate and comprehensive analysis.
 
       After categorizing and explaining each segment, provide a detailed Overall Assessment of the content. This assessment should commence with a summarization of the predominant categories (such as 'Unverified Claims', 'Manipulative Opinions', etc.), emphasizing those that appear with regularity. It should then critically examine the narrative constructed by these segments, highlighting any major inaccuracies, unsupported claims, or instances of misleading information. Evaluate the overall validity of the narrative by contrasting the collective content with verified data and reputable sources, pinpointing both corroborated and contentious points. Delve into the implications or potential effects of the narrative, considering how the blend of factual, speculative, and manipulative elements might influence the audience's perception and understanding of the topic. Conclude by reviewing the notable strengths (such as factual accuracy, logical coherence) and weaknesses (like reliance on emotional persuasion, factual inconsistencies) of the arguments presented, providing a balanced and comprehensive critique of the content's reliability, biases, and impact on informed discourse.
       
-      Afterwards, we'll do a Consensus Check, labelled as Consensus Check. Begin the Consensus Check by evaluating the overarching narrative's representation across the spectrum of political analysis, noting especially if it primarily echoes the perspectives of certain commentators rather than a broad consensus among experts. Highlight this divergence or alignment upfront. Next, focus on the segments of the narrative that find grounding in verified facts, such as election procedures, voter statistics, or other concrete data, acknowledging where the narrative aligns with established, verifiable information. Lastly, address the elements of the narrative that delve into speculation, discussing conjectures around campaign strategies, voter behavior, or future political events. Critically assess these speculative statements against the backdrop of empirical evidence and the prevailing consensus in the field. This structure ensures a comprehensive evaluation, distinguishing between the narrative's factual base and its speculative projections, and offering a clear perspective on its overall alignment with recognized consensus and best practices.
+      Afterwards, we'll do a Consensus Check, labelled as Consensus Check. Start by immediately stating if the views or information presented align or do not align with recognized best practices, consensus, or research in the field. Where there is consensus, clearly state whether these views are representative of a majority or minority consensus. After this initial alignment statement, delve into the specifics. Evaluate the content to determine how closely it matches the prevailing consensus, recognized best practices, the most robust evidence available, and the latest, most accepted research. Summarize the primary sentiments or messages of the content. If these views are in accordance with well-established norms or knowledge, detail the reasons for this alignment. Conversely, if there are discrepancies, specify the reasons for non-alignment. Additionally, critically examine any strategies, advice, or opinions shared and assess how they compare with the consensus of leading experts, authoritative bodies, or reputable scientific research.
 
       Assess not just whether these strategies, advice, or opinions are widely accepted or popular, but also whether they align with the prevailing consensus among experts in the field.
 
@@ -817,6 +804,12 @@ export class JobsService {
 
       I've made these interfaces to help assist in the Output structure.
 
+      interface Claim {
+        claim: string;
+        category: Category
+        Explanation: string
+      }
+
       interface MainClaim {
         mainClaim: string;
         category: Category;
@@ -852,6 +845,8 @@ export class JobsService {
       }
 
       interface Output {
+        summary: string;
+        claims: Claim[];
         sentence: FactCheckSentence[]
         overalAssesment: string;
         consensusCheck: string;
@@ -880,9 +875,15 @@ export class JobsService {
       Follow the output example structure: ${example[0].output}
       Here's another example structure: ${example[1].output}
 
+      Please note that in the output example, you can put any number of claims in. I have shown two. 
+
       ⚠️ Critical Reminder: In your analysis, strictly adhere to segmenting the transcript into individual FactCheckSentence instances. Each sentence or closely related group of sentences must be analyzed and reported as a separate FactCheckSentence. This segmentation is essential for a detailed and accurate evaluation. Do not analyze or report the transcript as a single, continuous text. 
       
-      PLEASE adhere exclusively to the categories listed in the Category enum and categorize each statement in the transcript based on these defined categories. Do not use any categories outside of this enum. Ensure that each categorization aligns accurately with the provided definitions.      `,
+      PLEASE adhere exclusively to the categories listed in the Category enum and categorize each statement in the transcript based on these defined categories. Do not use any categories outside of this enum. Ensure that each categorization aligns accurately with the provided definitions.      
+      
+      For every segment/claim analyzed, meticulously justify the category assigned by referencing specific evidence or sources. Offer a comprehensive exploration of these sources, discussing their credibility and relevance in detail. Additionally, provide an in-depth examination of the contextual background and potential broader impacts of the statement, including any societal, political, or economic implications. Ensure that each explanation delves into the nuances of the topic, including possible counterarguments and perspectives, to furnish a well-rounded and thoroughly substantiated analysis.
+      
+      Ensure each fact or claim is supported by a direct citation from a clearly identified, reputable source, such as 'According to a report by Reuters dated [Source Date], which states [specific fact]'. Refrain from using vague or generalized references to 'context documents' or 'available data'. Critical Reminder: This approach is essential for maintaining the analytical rigor and credibility of the evaluation. Continually review each segment to confirm that citations are appropriately detailed and accurately reflect the source material, ensuring the integrity and traceability of all information provided."`,
     });
 
     console.log(result);
@@ -917,9 +918,9 @@ export class JobsService {
     const input = await formatPrompt.format({
       result: result.text,
     });
-    const formatParseResponse = await formatParseModel.call(input);
+    // const formatParseResponse = await formatParseModel.call(input);
 
-    console.log(await parser.parse(formatParseResponse));
+    // console.log(await parser.parse(formatParseResponse));
 
     return {
       id: faker.string.uuid(),
@@ -1067,10 +1068,7 @@ export class JobsService {
     return parsed?.answer ? parsed?.answer : null;
   }
 
-  async mainClaimFinder(
-    transcriptionJob: TranscriptionJob,
-    title: string,
-  ): Promise<string> {
+  async mainClaimFinder(text: string, title: string): Promise<string> {
     const parserMainClaim = StructuredOutputParser.fromNamesAndDescriptions({
       query: 'extract the query property',
     });
@@ -1087,7 +1085,7 @@ export class JobsService {
     });
 
     const inputMainClaim = await promptMainClaim.format({
-      transcription: transcriptionJob.text,
+      transcription: text,
       title,
     });
 
@@ -1107,10 +1105,7 @@ export class JobsService {
     return parsedMainClaim.query;
   }
 
-  async hydeClaimList(
-    transcriptionJob: TranscriptionJob,
-    title: string,
-  ): Promise<string[]> {
+  async hydeClaimList(text: string, title: string): Promise<string[]> {
     // List test
     // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
     const parserList = new CommaSeparatedListOutputParser();
@@ -1135,7 +1130,7 @@ export class JobsService {
     ]);
 
     const responseList = await chain.invoke({
-      transcription: transcriptionJob.text,
+      transcription: text,
       title,
       format_instructions: parserList.getFormatInstructions(),
     });
@@ -1143,24 +1138,19 @@ export class JobsService {
     return responseList;
   }
 
-  async combinedClaimSetup(
-    transcriptionJob: TranscriptionJob,
-    title: string,
-  ): Promise<string[]> {
+  async combinedClaimSetup(text: string, title: string): Promise<string[]> {
     const listOfClaims = this.utilsService.getAllClaimsFromTranscript(
-      transcriptionJob,
+      text,
       title,
     );
-    const aClaimFinderPromise = this.aClaimFinder(transcriptionJob, title);
-    const mainClaimFinderPromise = this.mainClaimFinder(
-      transcriptionJob,
-      title,
-    );
-    const hydeClaimList = this.hydeClaimList(transcriptionJob, title);
+    console.log(text);
+
+    const mainClaimFinderPromise = this.mainClaimFinder(text, title);
+    const hydeClaimList = this.hydeClaimList(text, title);
 
     const arrayPromises = [listOfClaims, mainClaimFinderPromise, hydeClaimList];
 
-    if (aClaimFinderPromise) arrayPromises.push(aClaimFinderPromise);
+    // if (aClaimFinderPromise) arrayPromises.push(aClaimFinderPromise);
 
     const combinedClaimsSearch = await Promise.all([
       listOfClaims,
