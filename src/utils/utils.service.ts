@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SearchResult } from './utils.entity';
-import { MozillaReadabilityTransformer } from 'langchain/document_transformers/mozilla_readability';
+import { MozillaReadabilityTransformer } from '@langchain/community/document_transformers/mozilla_readability';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { Document } from 'langchain/document';
-import { WeaviateStore } from 'langchain/vectorstores/weaviate';
+import { WeaviateStore } from '@langchain/weaviate';
 import { CreateJobDto } from '../jobs/dto/create-job.dto';
 import {
   VideoJob,
@@ -11,11 +11,10 @@ import {
   CompletedVideoJob,
 } from '../jobs/entities/job.entity';
 import { CheerioWebBaseLoader } from 'langchain/document_loaders/web/cheerio';
-import { PromptTemplate } from 'langchain/prompts';
-import { AmendedSpeech, TranscriptionJob } from './utils.types';
-import { OpenAI } from 'langchain/llms/openai';
-import { CommaSeparatedListOutputParser } from 'langchain/output_parsers';
-import { RunnableSequence } from 'langchain/schema/runnable';
+import { PromptTemplate } from '@langchain/core/prompts';
+import { AmendedSpeech } from './utils.types';
+import { OpenAI } from '@langchain/openai';
+import { RunnableSequence } from '@langchain/core/runnables';
 import {
   from,
   mergeMap,
@@ -45,6 +44,7 @@ import { GoogleSearch } from '../google/entities/google.entity';
 const google = require('googlethis');
 
 const serp = require('serp');
+import { CommaSeparatedListOutputParser } from '@langchain/core/output_parsers';
 
 @Injectable()
 export class UtilsService {
@@ -748,7 +748,7 @@ export class UtilsService {
         
         \n{format_instructions}`,
       ),
-      new OpenAI({ temperature: 0, modelName: 'gpt-4-1106-preview' }),
+      new OpenAI({ temperature: 0, modelName: 'gpt-4o' }),
       parser,
     ]);
 
@@ -763,27 +763,57 @@ export class UtilsService {
 
   async getAllClaimsFromTranscript(text: string, title: string) {
     // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
+    type Person = {
+      name: string;
+      height_in_meters: number;
+    };
+
+    type People = {
+      people: Person[];
+    };
+
     const parserList = new CommaSeparatedListOutputParser();
 
     const chain = RunnableSequence.from([
-      PromptTemplate.fromTemplate(`Review the title for an overview of the main topic. Analyze the transcription to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and integrate into the overall theme of the discussion.
+      // PromptTemplate.fromTemplate(`Review the title for an overview of the main topic. Analyze the transcription to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and integrate into the overall theme of the discussion.
+
+      // For each identified claim, determine the essential elements that require factual verification. Examine the context of each claim within the transcription, noting the speaker's intent and its contribution to the overall argument or narrative.
+
+      // Aim to gather comprehensive, current, and credible information for each claim. Investigate the accuracy of each claim, its context, and any opposing viewpoints or alternate perspectives.
+
+      // When formulating your list of questions, ensure each one is presented as a clear, concise, and standalone inquiry. Each question should be self-contained and independent, capable of being understood and answered without reference to the transcript or previous content. In your formulation of these questions, do not use any commas at all.
+
+      // Compile a list of questions from the transcription that are focused on factual verification and understanding of individual claims. These questions should provide a clear view of the claims' factual basis and their relationship to the overall narrative, laying the groundwork for focused exploration in subsequent analysis.
+
+      // In compiling your questions, focus solely on factual elements that can be verified independently of the speaker's personal claims or experiences. Avoid forming questions that seek confirmation of the speaker's assertions about their own systems or experiences. Instead, concentrate on concrete, objective aspects that can be substantiated through external sources or established facts.
+
+      // Additionally, when formulating questions that involve numerical figures, ensure that commas are not used in the representation of numbers. For instance, write numbers like '1580 trillion' instead of '1,580 trillion' to maintain consistency with the instruction of not using commas. This applies to all numerical data in your questions, whether it's financial figures, statistical data, or any other quantifiable information.
+
+      // {format_instructions} {title} {transcription}`),
+      // new OpenAI({
+      //   temperature: 0,
+      //   modelName: 'gpt-4o',
+      // }),
+      PromptTemplate.fromTemplate(`Review the title for an overview of the main topic. Analyze the transcription to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and integrate them into the overall theme of the discussion.
 
       For each identified claim, determine the essential elements that require factual verification. Examine the context of each claim within the transcription, noting the speaker's intent and its contribution to the overall argument or narrative.
       
       Aim to gather comprehensive, current, and credible information for each claim. Investigate the accuracy of each claim, its context, and any opposing viewpoints or alternate perspectives.
       
-      When formulating your list of questions, ensure each one is presented as a clear, concise, and standalone inquiry. Each question should be self-contained and independent, capable of being understood and answered without reference to the transcript or previous content. In your formulation of these questions, do not use any commas at all.
+      When formulating your list of questions, ensure each one is presented as a clear, concise, and standalone inquiry. Each question should be self-contained and independent, capable of being understood and answered without reference to the transcript or previous content. Avoid using commas in your formulation of these questions.
       
-      Compile a list of questions from the transcription that are focused on factual verification and understanding of individual claims. These questions should provide a clear view of the claims' factual basis and their relationship to the overall narrative, laying the groundwork for focused exploration in subsequent analysis.
-
+      Compile a non numbered list of questions from the transcription that are focused on factual verification and understanding of individual claims. These questions should provide a clear view of the claims' factual basis and their relationship to the overall narrative, laying the groundwork for focused exploration in subsequent analysis.
+      
       In compiling your questions, focus solely on factual elements that can be verified independently of the speaker's personal claims or experiences. Avoid forming questions that seek confirmation of the speaker's assertions about their own systems or experiences. Instead, concentrate on concrete, objective aspects that can be substantiated through external sources or established facts.
-
-      Additionally, when formulating questions that involve numerical figures, ensure that commas are not used in the representation of numbers. For instance, write numbers like '1580 trillion' instead of '1,580 trillion' to maintain consistency with the instruction of not using commas. This applies to all numerical data in your questions, whether it's financial figures, statistical data, or any other quantifiable information.
+      
+      Ensure each question is contextually complete and interconnected, reflecting the content and narrative of the transcript. This helps in verifying the facts and understanding the overall narrative.
+      
+      Additionally, when formulating questions that involve numerical figures, ensure that commas are not used in the representation of numbers or to break up sentences. For instance, write numbers like '1580 trillion' instead of '1,580 trillion' to maintain consistency with the instruction of not using commas. This applies to all numerical data in your questions, whether it's financial figures, statistical data, or any other quantifiable information. Also, instead of sentences like USA, UK, EU, do USA and UK and EU.
       
       {format_instructions} {title} {transcription}`),
       new OpenAI({
         temperature: 0,
-        modelName: 'gpt-4-1106-preview',
+        modelName: 'gpt-4o',
       }),
       parserList,
     ]);
@@ -833,10 +863,12 @@ export class UtilsService {
   }
 
   async googleSearch(query: string): Promise<string[]> {
+    // const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com OR site:techcrunch.com OR site:wired.com OR site:theverge.com OR site:arstechnica.com OR site:forbes.com OR site:businessinsider.com OR site:ft.com OR site:wsj.com OR site:nationalgeographic.com OR site:scientificamerican.com OR site:nature.com OR site:newscientist.com OR site:espn.com OR site:bbc.com/sport OR site:skysports.com OR site:bleacherreport.com OR site:ign.com OR site:gamespot.com OR site:polygon.com OR site:kotaku.com OR site:hollywoodreporter.com OR site:variety.com OR site:ew.com OR site:deadline.com OR site:webmd.com OR site:mayoclinic.org OR site:healthline.com OR site:medicalnewstoday.com OR site:foreignaffairs.com OR site:economist.com OR site:cfr.org OR site:brookings.edu OR site:topgear.com OR site:motortrend.com OR site:autocar.co.uk OR site:caranddriver.com OR site:smithsonianmag.com OR site:npr.org OR site:apnews.com OR site:time.com`;
+    const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:foxnews.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com`;
     const options = {
       host: 'google.com',
       qs: {
-        q: query,
+        q: `${query} ${suffix}`,
         filter: 0,
         pws: 0,
         delay: 4000,
@@ -850,7 +882,7 @@ export class UtilsService {
       // },
       num: 3,
     };
-    console.log('Interesting');
+    console.log(query);
     try {
       const links: GoogleSearch[] = await serp.search(options);
       const filterLinks = links

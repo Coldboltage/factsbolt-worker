@@ -16,10 +16,8 @@ import { ClientProxy } from '@nestjs/microservices';
 const { dlAudio } = require('youtube-exec');
 const youtubedl = require('youtube-dl-exec');
 const { Configuration, OpenAIApi } = require('openai');
-import { OpenAIEmbeddings } from '@langchain/openai';
-const stripchar = require('stripchar').StripChar;
-import { OpenAI } from 'langchain/llms/openai';
-import { PromptTemplate } from 'langchain/prompts';
+import { OpenAI } from '@langchain/openai';
+import { PromptTemplate } from '@langchain/core/prompts';
 
 import { loadQAStuffChain } from 'langchain/chains';
 import {
@@ -30,8 +28,8 @@ import { UtilsService } from '../utils/utils.service';
 import { HydeRetriever } from 'langchain/retrievers/hyde';
 import { faker } from '@faker-js/faker';
 import weaviate from 'weaviate-ts-client';
-import { WeaviateStore } from 'langchain/vectorstores/weaviate';
-import { RunnableSequence } from 'langchain/schema/runnable';
+import { WeaviateStore } from '@langchain/weaviate';
+import { RunnableSequence } from '@langchain/core/runnables';
 import { AmendedSpeech, JobStatus } from '../utils/utils.types';
 import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_compression';
 import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
@@ -258,7 +256,7 @@ export class JobsService {
   }: Job) {
     const model = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-4-1106-preview',
+      modelName: 'gpt-4o',
       // modelName: 'gpt-4-0314',
       // modelName: 'gpt-3.5-turbo-1106',
     });
@@ -283,7 +281,7 @@ export class JobsService {
       },
     );
 
-    const llm = new OpenAI({ temperature: 0, modelName: 'gpt-4-1106-preview' });
+    const llm = new OpenAI({ temperature: 0, modelName: 'gpt-4o' });
 
     // const baseCompressor = LLMChainExtractor.fromLLM(model);
 
@@ -365,7 +363,7 @@ export class JobsService {
 
       searchResultFilter = await this.utilsService.processSearchTermsRxJS(
         searchTerm,
-        5,
+        1,
       );
 
       if (process.env.SCRAPPER_QUEUE === 'true') {
@@ -549,11 +547,11 @@ export class JobsService {
             
       Labelled Context Summary, create a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
 
-      Make Explicit Citations: Include direct references or citations from the Documents/Context in your explanations. This provides clarity on how the Documents/Context influenced the categorization and supports the analytical process.
+      Claim Section: Find each overarching claim, group the claims where possible and then build an overacting claim from it. This means where there could be many of claims, you create the overarching claim, thus to create more gravity to each claim because it now an overarching claim. From the transcript, define the category using the definitions below. Claims should be overarching and extracted, analysed and then generated. Each overarching claim of the transcript with it's category, should be explained to why it was put in that category. It is very important that where possible, that instead of using the claim from the transcript, rather we find the overarching claims where possible from all the individual claims, so not to repeat ourselves in the analysis section. The wording of the claim should be assertive so to know the direction of the claim. It is essential that the claims are overarching and operate as an umbrella to the many said claims in the transcript.
 
-      After the context summary, carefully review the transcript and identify key assertions or statements that form the basis of the discussion. For each identified statement, rephrase it into a formal claim that clearly encapsulates the assertion in precise, official language. Categorize each rephrased claim according to predefined standards such as Verified Fact, Grounded Speculation, or Misleading Fact, ensuring each is appropriately supported with direct citations from provided documents or relevant context. This will formalize the claims for a structured analysis and ensure they are distinctly recognized and evaluated on their merits.
+      End Claim Section. Analysis Section is has it's own instructions. 
       
-      Afterwards, do an analysis. In your analysis, it's crucial to treat each sentence or question in the transcript as a separate segment for evaluation. Follow these guidelines:
+      Analysis Section: Afterwards, do an analysis. In your analysis, it's crucial to treat each distinct claim or major point in the transcript as a separate segment for evaluation. Group closely related sentences into coherent segments when they contribute to the same claim or context. This approach will help maintain the flow and ensure a thorough and nuanced analysis. Follow these guidelines:
 
       Directive for Exclusive Use of Defined Categories:
       In this analysis, strictly adhere to the categories and their definitions as provided below. Each statement in the transcript must be evaluated and categorized exclusively based on these definitions. Refrain from using any external or previous categorization frameworks.
@@ -570,7 +568,7 @@ export class JobsService {
       "For every instance of source verification, explicitly avoid phrases like 'aligns with context documents' or 'based on the documents provided.' Instead, detail the specific source by name, date, and publication, such as 'As detailed by a report in The New York Times on [date], which states [specific fact].' Include a relevant quote or data point from this source and elucidate how it substantiates the claim being made."
       Within the source verification, specifically reference the actual source used for verification, providing clarity on how it supports the fact.
 
-      "Ensure that source verification in every analysis includes a direct reference to the actual document or publication used. Specify the source clearly, for example, 'Confirmed by data from an IEEE journal article dated [date], which demonstrates [specific data].' Provide an explanation that connects the source directly to the fact it supports, emphasizing the relevance and authority of the source in verifying the claim."
+      "Ensure that source verification in every analysis includes a direct reference to the actual document or publication used. Specify the source clearly, for example, 'Confirmed by data from an IEEE journal article [url/link], which demonstrates [specific data].' Provide an explanation that connects the source directly to the fact it supports, emphasizing the relevance and authority of the source in verifying the claim."
       
       Partially Verified applies to statements or claims where there is supporting evidence or credible sources that substantiate parts of the claim, albeit not comprehensively. This category is specifically intended for situations where the available documents, context, or sources provide clear support for some elements of the claim but not for others. In cases where the documents or credible sources substantiate certain aspects of a claim, these aspects should be clearly identified and stated as verified within the analysis. Meanwhile, aspects of the claim that lack such support should be identified and described as unverified or speculative. The distinction between verified and speculative parts should be explicit, ensuring that the analysis accurately reflects the evidence base. Claims are categorized under 'Partially Verified' when the substantiated parts are clearly supported by verifiable facts or credible references. Components of the claim extending into speculative territory without direct support from the provided documents or sources should be noted as such. This clear delineation helps in maintaining the integrity of the categorization process and ensures that each part of a claim is accurately represented according to the available evidence.
 
@@ -912,7 +910,7 @@ export class JobsService {
 
     const formatParseModel = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-4-1106-preview',
+      modelName: 'gpt-4o',
     });
 
     const input = await formatPrompt.format({
@@ -1049,7 +1047,7 @@ export class JobsService {
         
         Finally, from this analysis, create one comprehensive search query string, that encompasses all key subjects or claims identified in the transcription. {format_instructions} {title} {transcription}`,
       ),
-      new OpenAI({ temperature: 0, modelName: 'gpt-4-1106-preview' }),
+      new OpenAI({ temperature: 0, modelName: 'gpt-4o' }),
       parser,
     ]);
 
@@ -1092,7 +1090,7 @@ export class JobsService {
     // const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
     const modelMainClaim = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-4-1106-preview',
+      modelName: 'gpt-4o',
     });
 
     // const model = new OpenAI({ temperature: 0 });
@@ -1124,7 +1122,7 @@ export class JobsService {
       {format_instructions} {title} {transcription}`),
       new OpenAI({
         temperature: 0,
-        modelName: 'gpt-4-1106-preview',
+        modelName: 'gpt-4o',
       }),
       parserList,
     ]);
@@ -1180,7 +1178,7 @@ export class JobsService {
         
         Finally, from this analysis, create one comprehensive search query string, that encompasses all key subjects or claims identified in the transcription. {format_instructions} {title} {transcription}`,
       ),
-      new OpenAI({ temperature: 0, modelName: 'gpt-4-1106-preview' }),
+      new OpenAI({ temperature: 0, modelName: 'gpt-4o' }),
       parser,
     ]);
 
@@ -1221,7 +1219,7 @@ export class JobsService {
     // const model = new OpenAI({ temperature: 0, modelName: 'gpt-4' });
     const modelMainClaim = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-4-1106-preview',
+      modelName: 'gpt-4o',
     });
 
     // const model = new OpenAI({ temperature: 0 });
@@ -1250,7 +1248,7 @@ export class JobsService {
       {format_instructions} {title} {transcription}`),
       new OpenAI({
         temperature: 0,
-        modelName: 'gpt-4-1106-preview',
+        modelName: 'gpt-4o',
       }),
       parserList,
     ]);
@@ -1302,7 +1300,7 @@ export class JobsService {
 
     const model = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-4-1106-preview',
+      modelName: 'gpt-4o',
     });
     // const model = new OpenAI({ temperature: 0 });
 
@@ -1337,7 +1335,7 @@ export class JobsService {
 
     const model = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-4-1106-preview',
+      modelName: 'gpt-4o',
     });
     // const model = new OpenAI({ temperature: 0 });
 
@@ -1376,7 +1374,7 @@ export class JobsService {
 
     const model = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-4-1106-preview',
+      modelName: 'gpt-4o',
     });
     // const model = new OpenAI({ temperature: 0 });
 
