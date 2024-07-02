@@ -45,10 +45,12 @@ const google = require('googlethis');
 
 const serp = require('serp');
 import { CommaSeparatedListOutputParser } from '@langchain/core/output_parsers';
+const axios = require('axios');
 
 @Injectable()
 export class UtilsService {
   private readonly logger = new Logger(UtilsService.name);
+  private useLocalScrapper = true;
 
   // private client = (weaviate as any).client({
   //   scheme: process.env.WEAVIATE_SCHEME || 'http',
@@ -763,52 +765,22 @@ export class UtilsService {
 
   async getAllClaimsFromTranscript(text: string, title: string) {
     // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
-    type Person = {
-      name: string;
-      height_in_meters: number;
-    };
-
-    type People = {
-      people: Person[];
-    };
-
     const parserList = new CommaSeparatedListOutputParser();
 
     const chain = RunnableSequence.from([
-      // PromptTemplate.fromTemplate(`Review the title for an overview of the main topic. Analyze the transcription to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and integrate into the overall theme of the discussion.
+      PromptTemplate.fromTemplate(`Extract key topics from the transcription and formulate broad, contextually relevant questions for factual verification, presented in a comma-separated list.
 
-      // For each identified claim, determine the essential elements that require factual verification. Examine the context of each claim within the transcription, noting the speaker's intent and its contribution to the overall argument or narrative.
-
-      // Aim to gather comprehensive, current, and credible information for each claim. Investigate the accuracy of each claim, its context, and any opposing viewpoints or alternate perspectives.
-
-      // When formulating your list of questions, ensure each one is presented as a clear, concise, and standalone inquiry. Each question should be self-contained and independent, capable of being understood and answered without reference to the transcript or previous content. In your formulation of these questions, do not use any commas at all.
-
-      // Compile a list of questions from the transcription that are focused on factual verification and understanding of individual claims. These questions should provide a clear view of the claims' factual basis and their relationship to the overall narrative, laying the groundwork for focused exploration in subsequent analysis.
-
-      // In compiling your questions, focus solely on factual elements that can be verified independently of the speaker's personal claims or experiences. Avoid forming questions that seek confirmation of the speaker's assertions about their own systems or experiences. Instead, concentrate on concrete, objective aspects that can be substantiated through external sources or established facts.
-
-      // Additionally, when formulating questions that involve numerical figures, ensure that commas are not used in the representation of numbers. For instance, write numbers like '1580 trillion' instead of '1,580 trillion' to maintain consistency with the instruction of not using commas. This applies to all numerical data in your questions, whether it's financial figures, statistical data, or any other quantifiable information.
-
-      // {format_instructions} {title} {transcription}`),
-      // new OpenAI({
-      //   temperature: 0,
-      //   modelName: 'gpt-4o',
-      // }),
-      PromptTemplate.fromTemplate(`Review the title for an overview of the main topic. Analyze the transcription to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and integrate them into the overall theme of the discussion.
-
-      For each identified claim, determine the essential elements that require factual verification. Examine the context of each claim within the transcription, noting the speaker's intent and its contribution to the overall argument or narrative.
+      Review the transcription to understand the main topic and analyze it to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and ensure each integrates into the overall theme of the discussion. For each identified claim, determine the essential elements requiring verification, considering the speaker's intent and the claim's contribution to the overall argument.
       
-      Aim to gather comprehensive, current, and credible information for each claim. Investigate the accuracy of each claim, its context, and any opposing viewpoints or alternate perspectives.
+      Formulate broad, contextually relevant questions that are clear, concise, and standalone, ensuring each question can be understood without reference to the transcript. Avoid using exact phrases from the transcript in these questions. Instead, focus on related broader topics. Each question should be presented in a comma-separated list.
       
-      When formulating your list of questions, ensure each one is presented as a clear, concise, and standalone inquiry. Each question should be self-contained and independent, capable of being understood and answered without reference to the transcript or previous content. Avoid using commas in your formulation of these questions.
+      Each question should reflect the content and narrative of the transcript, focusing on specific, verifiable details and avoiding broad or general inquiries. Ensure each question addresses a unique aspect of the transcript without redundancy. 
       
-      Compile a non numbered list of questions from the transcription that are focused on factual verification and understanding of individual claims. These questions should provide a clear view of the claims' factual basis and their relationship to the overall narrative, laying the groundwork for focused exploration in subsequent analysis.
+      When dealing with numerical data, do not use commas. For example, write '1580 trillion' instead of '1,580 trillion'. Additionally, do not use commas for listing items. Instead, use "and". For example, write 'USA and UK and EU' instead of 'USA, UK, EU'. More detailed examples include: write '2500' instead of '2,500', '3000000' instead of '3,000,000', and '45700000' instead of '45,700,000'. For lists, write 'apples and oranges and bananas' instead of 'apples, oranges, bananas', 'January and February and March' instead of 'January, February, March', and 'cats and dogs and rabbits' instead of 'cats, dogs, rabbits'. When combining large numbers and lists, write 'In the next 20 years, the population is expected to reach 8500000 in the USA and 67000000 in the UK and 83000000 in Germany' instead of 'In the next 20 years, the population is expected to reach 8,500,000 in the USA, 67,000,000 in the UK, and 83,000,000 in Germany'. Formulate questions in a factual and objective manner, avoiding subjective language, personal opinions, and colloquial expressions. Aim for each question to be contextually complete and interconnected, reflecting the overall narrative of the transcript.
       
-      In compiling your questions, focus solely on factual elements that can be verified independently of the speaker's personal claims or experiences. Avoid forming questions that seek confirmation of the speaker's assertions about their own systems or experiences. Instead, concentrate on concrete, objective aspects that can be substantiated through external sources or established facts.
+      Compile the questions into a comma-separated list focused on factual verification and understanding of individual claims, providing a clear view of the claims' factual basis and their relationship to the overall narrative. This list will lay the groundwork for focused exploration in subsequent analysis.
       
-      Ensure each question is contextually complete and interconnected, reflecting the content and narrative of the transcript. This helps in verifying the facts and understanding the overall narrative.
-      
-      Additionally, when formulating questions that involve numerical figures, ensure that commas are not used in the representation of numbers or to break up sentences. For instance, write numbers like '1580 trillion' instead of '1,580 trillion' to maintain consistency with the instruction of not using commas. This applies to all numerical data in your questions, whether it's financial figures, statistical data, or any other quantifiable information. Also, instead of sentences like USA, UK, EU, do USA and UK and EU.
+      For example, if the transcription mentions, "Yesterday, the House passed a bill condemning President Biden's pause on sending certain weapons to Israel and progressive House staffers. Many were wearing masks, protested that vote on Capitol Hill," questions might include: "What are the reasons behind the House's decision to condemn Biden's pause on sending weapons to Israel", "What are the implications of the House passing the bill on US-Israel relations", "What are the current debates among House Democrats regarding US foreign policy on Israel", "What are the reasons for the recent protests by House staffers on Capitol Hill", "How has the Biden administration's policy on Israel evolved over recent months
       
       {format_instructions} {title} {transcription}`),
       new OpenAI({
@@ -836,6 +808,7 @@ export class UtilsService {
     searchTerms: string[],
     concurrencyLimit: number,
   ): Promise<string[]> {
+    console.log(searchTerms);
     const fixedDelay = 100; // Fixed delay for each request
     let currentDelay = 0; // Initialize current delay
 
@@ -843,7 +816,11 @@ export class UtilsService {
       mergeMap((term, index) => {
         const delayedObservable = of(term).pipe(
           delay(currentDelay), // Apply the current delay
-          concatMap(() => this.googleSearch(term)), // Perform the search after the delay
+          concatMap(() =>
+            this.useLocalScrapper
+              ? this.googleSearch(term)
+              : this.serperGoogleSearch(term),
+          ), // Perform the search after the delay
         );
 
         // Increment the delay for the next term, or reset if at the concurrency limit
@@ -859,12 +836,14 @@ export class UtilsService {
       toArray(), // Collect all results
     );
 
+    this.useLocalScrapper = true;
+
     return lastValueFrom(searchTermObservable);
   }
 
   async googleSearch(query: string): Promise<string[]> {
     // const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com OR site:techcrunch.com OR site:wired.com OR site:theverge.com OR site:arstechnica.com OR site:forbes.com OR site:businessinsider.com OR site:ft.com OR site:wsj.com OR site:nationalgeographic.com OR site:scientificamerican.com OR site:nature.com OR site:newscientist.com OR site:espn.com OR site:bbc.com/sport OR site:skysports.com OR site:bleacherreport.com OR site:ign.com OR site:gamespot.com OR site:polygon.com OR site:kotaku.com OR site:hollywoodreporter.com OR site:variety.com OR site:ew.com OR site:deadline.com OR site:webmd.com OR site:mayoclinic.org OR site:healthline.com OR site:medicalnewstoday.com OR site:foreignaffairs.com OR site:economist.com OR site:cfr.org OR site:brookings.edu OR site:topgear.com OR site:motortrend.com OR site:autocar.co.uk OR site:caranddriver.com OR site:smithsonianmag.com OR site:npr.org OR site:apnews.com OR site:time.com`;
-    const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:foxnews.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com`;
+    const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com OR site:techcrunch.com OR site:wired.com OR site:theverge.com OR site:arstechnica.com OR site:forbes.com OR site:businessinsider.com OR site:ft.com OR site:wsj.com OR site:nationalgeographic.com OR site:scientificamerican.com OR site:nature.com OR site:newscientist.com OR site:espn.com OR site:bbc.com/sport OR site:skysports.com OR site:bleacherreport.com OR site:ign.com OR site:gamespot.com OR site:polygon.com OR site:kotaku.com OR site:hollywoodreporter.com OR site:variety.com OR site:ew.com OR site:deadline.com OR site:webmd.com OR site:mayoclinic.org OR site:healthline.com OR site:medicalnewstoday.com OR site:foreignaffairs.com OR site:economist.com OR site:cfr.org OR site:brookings.edu OR site:topgear.com OR site:motortrend.com OR site:autocar.co.uk OR site:caranddriver.com OR site:smithsonianmag.com OR site:npr.org OR site:apnews.com OR site:time.com -site:infowars.com -site:naturalnews.com -site:beforeitsnews.com -site:newspunch.com -site:thesun.co.uk -site:breitbart.com`;
     const options = {
       host: 'google.com',
       qs: {
@@ -882,7 +861,7 @@ export class UtilsService {
       // },
       num: 3,
     };
-    console.log(query);
+    console.log(`Pages for: ${query}`);
     try {
       const links: GoogleSearch[] = await serp.search(options);
       const filterLinks = links
@@ -892,22 +871,56 @@ export class UtilsService {
         .filter((_, index) => index < 3);
       return filterLinks;
     } catch (error) {
+      this.useLocalScrapper = false;
       console.log(error);
     }
+
+    if (!this.useLocalScrapper) {
+      return this.serperGoogleSearch(query);
+    }
+
+    return [];
   }
 
-  async googleSearchThis(query: string): Promise<string[]> {
-    const options = {
-      page: 0,
-      safe: false, // Safe Search
-      parse_ads: false, // If set to true sponsored results will be parsed
+  async serperGoogleSearch(query: string): Promise<string[]> {
+    const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com OR site:techcrunch.com OR site:wired.com OR site:theverge.com OR site:arstechnica.com OR site:forbes.com OR site:businessinsider.com OR site:ft.com OR site:wsj.com OR site:nationalgeographic.com OR site:scientificamerican.com OR site:nature.com OR site:newscientist.com OR site:espn.com OR site:bbc.com/sport OR site:skysports.com OR site:bleacherreport.com OR site:ign.com OR site:gamespot.com OR site:polygon.com OR site:kotaku.com OR site:hollywoodreporter.com OR site:variety.com OR site:ew.com OR site:deadline.com OR site:webmd.com OR site:mayoclinic.org OR site:healthline.com OR site:medicalnewstoday.com OR site:foreignaffairs.com OR site:economist.com OR site:cfr.org OR site:brookings.edu OR site:topgear.com OR site:motortrend.com OR site:autocar.co.uk OR site:caranddriver.com OR site:smithsonianmag.com OR site:npr.org OR site:apnews.com OR site:time.com -site:infowars.com -site:naturalnews.com -site:beforeitsnews.com -site:newspunch.com -site:thesun.co.uk -site:breitbart.com`;
+
+    let data = JSON.stringify({
+      q: `${query} ${suffix}`,
+    });
+
+    let config = {
+      method: 'post',
+      url: 'https://google.serper.dev/search',
+      headers: {
+        'X-API-KEY': process.env.SERPER_APIKEY,
+        'Content-Type': 'application/json',
+      },
+      data: data,
     };
 
-    const response = await google.search(query, options);
-    return response.results
-      .map((link) => link.url)
-      .filter((_, index) => index < 3);
+    const response = await axios(config);
+
+    const allLinks = response.data.organic
+      .map((result) => result.link)
+      .filter((_: string, index: number) => index < 3);
+    console.log('Successful');
+
+    return allLinks;
   }
+
+  // async googleSearchThis(query: string): Promise<string[]> {
+  //   const options = {
+  //     page: 0,
+  //     safe: false, // Safe Search
+  //     parse_ads: false, // If set to true sponsored results will be parsed
+  //   };
+
+  //   const response = await google.search(query, options);
+  //   return response.results
+  //     .map((link) => link.url)
+  //     .filter((_, index) => index < 3);
+  // }
 
   async youtubeSummary(mission: string) {
     const promptTemplate = `Create a concise summary in a single paragraph, focusing on the following points, and ensure it does not exceed 100 words:
