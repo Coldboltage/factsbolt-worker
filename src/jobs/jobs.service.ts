@@ -361,6 +361,10 @@ export class JobsService {
         });
       }
 
+      console.log(searchTerm);
+
+      console.log('Passed');
+
       searchResultFilter = await this.utilsService.processSearchTermsRxJS(
         searchTerm,
         1,
