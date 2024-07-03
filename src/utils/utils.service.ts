@@ -209,15 +209,15 @@ export class UtilsService {
       }
 
       try {
-        await vectorStore.delete({
-          filter: {
-            where: {
-              operator: 'Equal',
-              path: ['source'],
-              valueText: url,
-            },
-          },
-        });
+        // await vectorStore.delete({
+        //   filter: {
+        //     where: {
+        //       operator: 'Equal',
+        //       path: ['source'],
+        //       valueText: url,
+        //     },
+        //   },
+        // });
         await vectorStore.addDocuments(filteredDocuments);
         // await WeaviateStore.fromDocuments(
         //   filteredDocuments,
@@ -258,18 +258,29 @@ export class UtilsService {
     createJobDto: CreateJobDto,
   ): Promise<CompletedVideoJob> {
     const downloadedTikTok = await TiktokDL(createJobDto.link, {
-      version: 'v1', //  version: "v1" | "v2" | "v3"
+      version: 'v3', //  version: "v1" | "v2" | "v3"
     });
+
+    function extractTikTokVideoID(url) {
+      const regex = /\/video\/(\d+)/;
+      const match = url.match(regex);
+      return match ? match[1] : null;
+    }
+
+    const url = createJobDto.link;
+    const videoID = extractTikTokVideoID(url);
+
+    console.log(downloadedTikTok);
 
     const filteredVideoInformation: VideoJob = {
       id: downloadedTikTok.result.id,
       name: stripchar
-        .RSExceptUnsAlpNum(downloadedTikTok.result.description)
+        .RSExceptUnsAlpNum(downloadedTikTok.result.desc)
         .slice(0, 250),
       link: createJobDto.link,
     };
 
-    const realVideoLink = downloadedTikTok.result.video[0];
+    const realVideoLink = downloadedTikTok.result.video1;
 
     const filePath = path.resolve(
       __dirname,
