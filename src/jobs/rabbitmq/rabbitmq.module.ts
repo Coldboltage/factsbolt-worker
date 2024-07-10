@@ -12,18 +12,24 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       {
         name: 'FACTSBOLT_WORKER_SERVICE',
         imports: [ConfigModule],
-        useFactory: async (configService: ConfigService) => ({
-          transport: Transport.RMQ,
-          options: {
-            urls: [
-              `amqp://${configService.get<string>('RABBITMQ_BASEURL')}:5672`,
-            ],
-            queue: 'api_queue',
-            queueOptions: {
-              durable: false,
+        useFactory: async (configService: ConfigService) => {
+          const rabbitmqBaseUrl = configService.get<string>('RABBITMQ_BASEURL', 'localhost');
+          // if (!rabbitmqBaseUrl) {
+          //   throw new Error('RABBITMQ_BASEURL is not defined');
+          // }
+
+          return {
+            transport: Transport.RMQ,
+            options: {
+              urls: [`amqp://${rabbitmqBaseUrl}:5672`],
+              queue: 'api_queue',
+              queueOptions: {
+                durable: false,
+              },
             },
-          },
-        }),
+          };
+        },
+
         inject: [ConfigService],
       },
     ]),

@@ -1,19 +1,25 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import * as dotenv from 'dotenv';
-// import '@tensorflow/tfjs-node';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
+  const appContext = await NestFactory.createApplicationContext(AppModule);
+  const configService = appContext.get(ConfigService);
+
+  // Retrieve configuration values
+  const rabbitMqUrl = configService.get<string>('RABBITMQ_BASEURL');
+  const queueEnv = configService.get<string>('QUEUE_ENV') || 'video_queue';
+
   const app = await NestFactory.createMicroservice<MicroserviceOptions>(
     AppModule,
     {
       transport: Transport.RMQ,
       options: {
-        urls: [`amqp://${process.env.RABBITMQ_BASEURL}:5672`],
-        prefetchCount: process.env.QUEUE_ENV ? 1 : 1,
+        urls: [`amqp://${rabbitMqUrl}:5672`],
+        prefetchCount: queueEnv ? 1 : 1,
         noAck: false,
-        queue: `${process.env.QUEUE_ENV || 'video_queue'}`,
+        queue: `${queueEnv || 'video_queue'}`,
         queueOptions: {
           durable: false,
           heartbeatIntervalInSeconds: 60, // Heartbeat interval in seconds

@@ -6,7 +6,8 @@ export interface AudioInformation {
   url: string;
   filename: string;
   folder: string;
-  quality: string;
+  quality?: string;
+  resolution?: number
 }
 
 export interface VideoJob {

@@ -3,12 +3,17 @@ import { CreateScrapperDto } from './dto/create-scrapper.dto';
 import { UpdateScrapperDto } from './dto/update-scrapper.dto';
 import { Scrapper, ScrapperStatus } from './entities/scrapper.entity';
 import axios from 'axios';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ScrapperService {
+  constructor(private configService: ConfigService) {}
+
+  private apiBaseUrl = this.configService.get<string>('API_BASE_URL');
+
   async monitorScrapper(id: string): Promise<void> {
     console.log('monitorScrapper');
-    await fetch(`${process.env.API_BASE_URL}/scrapper/${id}`, {
+    await fetch(`${this.apiBaseUrl}/scrapper/${id}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -16,7 +21,7 @@ export class ScrapperService {
       body: JSON.stringify({ id, status: ScrapperStatus.READY }),
     });
 
-    let status = false;
+    // let status = false;
 
     await new Promise((resolve) => {
       const pollStatus = async (id: string) => {
@@ -44,9 +49,7 @@ export class ScrapperService {
   }
 
   async findOne(id: string): Promise<Scrapper> {
-    const response = await axios.get(
-      `${process.env.API_BASE_URL}/scrapper/${id}`,
-    );
+    const response = await axios.get(`${this.apiBaseUrl}/scrapper/${id}`);
     if (!response) throw new NotFoundException('scrapper-entity-not-found');
     const scrapperEntity: Scrapper = response.data;
     return scrapperEntity;

@@ -18,20 +18,16 @@ import { RunnableSequence } from '@langchain/core/runnables';
 import {
   from,
   mergeMap,
-  concatAll,
   toArray,
   lastValueFrom,
-  concat,
   concatMap,
   delay,
   of,
-  filter,
   mergeAll,
 } from 'rxjs';
-const path = require('path');
 const youtubedl = require('youtube-dl-exec');
 const stripchar = require('stripchar').StripChar;
-const { dlAudio } = require('youtube-exec');
+const { dlAudio, dlAudioVideo } = require('youtube-exec');
 const { TiktokDL } = require('@tobyg74/tiktok-api-dl');
 const download = require('download');
 const fs = require('fs');
@@ -41,42 +37,27 @@ import { v4 as uuidv4 } from 'uuid';
 import weaviate from 'weaviate-ts-client';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { GoogleSearch } from '../google/entities/google.entity';
-const google = require('googlethis');
-
-const serp = require('serp');
 import { CommaSeparatedListOutputParser } from '@langchain/core/output_parsers';
-const axios = require('axios');
+import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
+const path = require('path');
+const { alldl } = require('rahad-all-downloader');
+const serp = require("serp");
+
 
 @Injectable()
 export class UtilsService {
+  constructor(private configService: ConfigService) {}
+
   private readonly logger = new Logger(UtilsService.name);
   private useLocalScrapper = true;
-
-  // private client = (weaviate as any).client({
-  //   scheme: process.env.WEAVIATE_SCHEME || 'http',
-  //   host: process.env.WEAVIATE_HOST || 'localhost:8080',
-  //   apiKey: new (weaviate as any).ApiKey(
-  //     process.env.WEAVIATE_API_KEY || 'default',
-  //   ),
-  // });
-
-  // async searchTerm(query: string): Promise<SearchResult[]> {
-  //   console.log(query);
-  //   const response = await fetch(
-  //     `http://api.serpstack.com/search?access_key=${process.env.SERPSTACK_KEY}&query=${query}`,
-  //   );
-  //   console.log(
-  //     `http://api.serpstack.com/search?access_key=${process.env.SERPSTACK_KEY}&query=${query}`,
-  //   );
-  //   const data = await response.json();
-  //   console.log(data.organic_results);
-  //   return data.organic_results;
-  // }
+  private scrapperApi = this.configService.get<string>('SCRAPPER_API');
+  private serperApi = this.configService.get<string>('SERPER_APIKEY');
 
   async searchTerm(query: string): Promise<SearchResult[]> {
     console.log(query);
     const response = await fetch(
-      `https://api.scraperapi.com/structured/google/search?api_key=${process.env.SCRAPPER_API}&query=${query}`,
+      `https://api.scraperapi.com/structured/google/search?api_key=${this.scrapperApi}&query=${query}`,
     );
 
     let data;
@@ -259,9 +240,16 @@ export class UtilsService {
   async downloadTikTokJob(
     createJobDto: CreateJobDto,
   ): Promise<CompletedVideoJob> {
-    const downloadedTikTok = await TiktokDL(createJobDto.link, {
-      version: 'v3', //  version: "v1" | "v2" | "v3"
-    });
+    // Backup version if the first version doesn't work
+    const backupDownloader = async (url: string) => {
+      try {
+        const result = await alldl(url);
+        console.log(result); // all response same
+        return result;
+      } catch (error) {
+        console.error('Error:', error.message);
+      }
+    };
 
     function extractTikTokVideoID(url) {
       const regex = /\/video\/(\d+)/;
@@ -272,22 +260,43 @@ export class UtilsService {
     const url = createJobDto.link;
     const videoID = extractTikTokVideoID(url);
 
+    const downloadedTikTok = await TiktokDL(createJobDto.link, {
+      version: 'v3', //  version: "v1" | "v2" | "v3"
+    });
+
     console.log(downloadedTikTok);
 
-    const filteredVideoInformation: VideoJob = {
-      id: downloadedTikTok.result.id,
-      name: stripchar
-        .RSExceptUnsAlpNum(downloadedTikTok.result.desc)
-        .slice(0, 250),
-      link: createJobDto.link,
-    };
+    let filteredVideoInformation: VideoJob;
+    let realVideoLink: string;
 
-    const realVideoLink = downloadedTikTok.result.video1;
+    if (downloadedTikTok.status === 'error') {
+      console.log('Error was found, proceeding with backup version');
+      const backupTikTok = await backupDownloader(createJobDto.link);
+      filteredVideoInformation = {
+        id: videoID,
+        name: stripchar
+          .RSExceptUnsAlpNum(backupTikTok.data.title)
+          .slice(0, 250),
+        link: createJobDto.link,
+      };
+      realVideoLink = backupTikTok.data.videoUrl;
+    } else {
+      console.log('No error with normal version');
+      filteredVideoInformation = {
+        id: videoID,
+        name: stripchar
+          .RSExceptUnsAlpNum(downloadedTikTok.result.desc)
+          .slice(0, 250),
+        link: createJobDto.link,
+      };
+      realVideoLink = downloadedTikTok.result.video1;
+    }
 
     const filePath = path.resolve(
       __dirname,
       `../../src/jobs/videos/${filteredVideoInformation.name}`,
     );
+
     const finalPath = path.resolve(
       __dirname,
       `../../src/jobs/downloads/${filteredVideoInformation.name}.mp3`,
@@ -364,13 +373,38 @@ export class UtilsService {
     const audioInformation: AudioInformation = {
       url: createJobDto.link,
       filename: stripchar.RSExceptUnsAlpNum(filteredVideoInformation.name),
-      folder: 'src/jobs/downloads', // optional, default: "youtube-exec"
-      quality: 'best', // or "lowest"; default: "best"
+      folder: 'src/jobs/videos', // optional, default: "youtube-exec"
+      resolution: 144, // or "lowest"; default: "best"
     };
 
     try {
-      await dlAudio(audioInformation);
-      console.log('Audio downloaded successfully! 🔊🎉');
+      await dlAudioVideo(audioInformation);
+      console.log('Video downloaded successfully! 🔊🎉');
+
+      const filePath = path.resolve(
+        __dirname,
+        `../../src/jobs/videos/${audioInformation.filename}`,
+      );
+
+      const finalPath = path.resolve(
+        __dirname,
+        `../../src/jobs/downloads/${audioInformation.filename}.mp3`,
+      );
+
+      await new Promise((resolve, reject) => {
+        ffmpeg(`${filePath}.mp4`)
+          .toFormat(`mp3`)
+          .on('end', () => {
+            console.log('Conversion finished.');
+            resolve(true);
+          })
+          .on('error', (err) => {
+            console.error('Error:', err);
+            reject(err);
+          })
+          .save(finalPath);
+      });
+
       return {
         video: filteredVideoInformation,
         audio: audioInformation,
@@ -811,7 +845,7 @@ export class UtilsService {
   }
 
   async searchTermToUrl(term: string) {
-    let searchResults = await this.searchTerm(term);
+    const searchResults = await this.searchTerm(term);
     return this.extractURLs(searchResults);
   }
 
@@ -865,11 +899,6 @@ export class UtilsService {
         retry: 3,
         num: 4,
       },
-      // proxy: {
-      //   server: process.env.SERP_SERVER,
-      //   username: process.env.SERP_USERNAME,
-      //   password: process.env.SERP_PASSWORD,
-      // },
       num: 3,
     };
     console.log(`Pages for: ${query}`);
@@ -896,15 +925,15 @@ export class UtilsService {
   async serperGoogleSearch(query: string): Promise<string[]> {
     const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com OR site:techcrunch.com OR site:wired.com OR site:theverge.com OR site:arstechnica.com OR site:forbes.com OR site:businessinsider.com OR site:ft.com OR site:wsj.com OR site:nationalgeographic.com OR site:scientificamerican.com OR site:nature.com OR site:newscientist.com OR site:espn.com OR site:bbc.com/sport OR site:skysports.com OR site:bleacherreport.com OR site:ign.com OR site:gamespot.com OR site:polygon.com OR site:kotaku.com OR site:hollywoodreporter.com OR site:variety.com OR site:ew.com OR site:deadline.com OR site:webmd.com OR site:mayoclinic.org OR site:healthline.com OR site:medicalnewstoday.com OR site:foreignaffairs.com OR site:economist.com OR site:cfr.org OR site:brookings.edu OR site:topgear.com OR site:motortrend.com OR site:autocar.co.uk OR site:caranddriver.com OR site:smithsonianmag.com OR site:npr.org OR site:apnews.com OR site:time.com -site:infowars.com -site:naturalnews.com -site:beforeitsnews.com -site:newspunch.com -site:thesun.co.uk -site:breitbart.com`;
 
-    let data = JSON.stringify({
+    const data = JSON.stringify({
       q: `${query} ${suffix}`,
     });
 
-    let config = {
+    const config = {
       method: 'post',
       url: 'https://google.serper.dev/search',
       headers: {
-        'X-API-KEY': process.env.SERPER_APIKEY,
+        'X-API-KEY': this.serperApi,
         'Content-Type': 'application/json',
       },
       data: data,

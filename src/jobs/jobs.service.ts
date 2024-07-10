@@ -13,9 +13,7 @@ import axios from 'axios';
 import * as fs from 'fs-extra';
 import { TranscribeAudioDto } from './dto/transcribe-audio.dto';
 import { ClientProxy } from '@nestjs/microservices';
-const { dlAudio } = require('youtube-exec');
-const youtubedl = require('youtube-dl-exec');
-const { Configuration, OpenAIApi } = require('openai');
+import { Configuration, OpenAIApi } from 'openai';
 import { OpenAI } from '@langchain/openai';
 import { PromptTemplate } from '@langchain/core/prompts';
 
@@ -25,7 +23,6 @@ import {
   StructuredOutputParser,
 } from 'langchain/output_parsers';
 import { UtilsService } from '../utils/utils.service';
-import { HydeRetriever } from 'langchain/retrievers/hyde';
 import { faker } from '@faker-js/faker';
 import weaviate from 'weaviate-ts-client';
 import { WeaviateStore } from '@langchain/weaviate';
@@ -35,19 +32,33 @@ import { ContextualCompressionRetriever } from 'langchain/retrievers/contextual_
 import { LLMChainExtractor } from 'langchain/retrievers/document_compressors/chain_extract';
 import { DocumentInterface } from '@langchain/core/documents';
 import { z } from 'zod';
-import { HuggingFaceInferenceEmbeddings } from 'langchain/embeddings/hf';
 import { Scrapper, ScrapperStatus } from '../scrapper/entities/scrapper.entity';
 import { uuid } from 'uuidv4';
 import { CohereEmbeddings } from '@langchain/cohere';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JobsService {
-  private logger = new Logger(JobsService.name);
-
   constructor(
     @Inject('FACTSBOLT_WORKER_SERVICE') private client: ClientProxy,
     private utilsService: UtilsService,
+    private configService: ConfigService,
   ) {}
+
+  private logger = new Logger(JobsService.name);
+
+  // Config Setup
+  private assemblyApiToken = this.configService.get<string>(
+    'ASSEMBLEY_API_TOKEN',
+  );
+  private openaiApiKey = this.configService.get<string>('OPENAI_API_KEY');
+  private weaviateScheme = this.configService.get<string>('WEAVIATE_SCHEME');
+  private weaviateHost = this.configService.get<string>('WEAVIATE_HOST');
+  private weaviateApiKey = this.configService.get<string>('WEAVIATE_API_KEY');
+  private searchGoogle = this.configService.get<string>('SEARCH_GOOGLE');
+  private scrapperQueue = this.configService.get<string>('SCRAPPER_QUEUE');
+  private apiBaseUrl = this.configService.get<string>('API_BASE_URL');
+
   async onApplicationBootstrap() {
     await this.client.connect();
   }
@@ -134,7 +145,7 @@ export class JobsService {
   ): Promise<TranscriptionJob> {
     const baseUrl = 'https://api.assemblyai.com/v2';
     const headers = {
-      authorization: process.env.ASSEMBLEY_API_TOKEN,
+      authorization: this.assemblyApiToken,
     };
     const path = 'src/jobs/downloads';
     let audioData;
@@ -221,7 +232,7 @@ export class JobsService {
     transcription: AmendedSpeech[],
   ): Promise<ChatGPT> {
     const configuration = new Configuration({
-      apiKey: process.env.OPENAI_API_KEY,
+      apiKey: this.openaiApiKey,
     });
     const openai = new OpenAIApi(configuration);
 
@@ -231,7 +242,8 @@ export class JobsService {
     try {
       completion = await openai.createChatCompletion({
         temperature: 0.01,
-        // model: 'gpt-4-0613',
+        model: '',
+        messages: [],
       });
     } catch (error) {
       console.log(error);
@@ -263,11 +275,9 @@ export class JobsService {
 
     // Something wrong with the weaviate-ts-client types, so we need to disable
     const client = (weaviate as any).client({
-      scheme: process.env.WEAVIATE_SCHEME || 'http',
-      host: process.env.WEAVIATE_HOST || 'localhost:8080',
-      apiKey: new (weaviate as any).ApiKey(
-        process.env.WEAVIATE_API_KEY || 'default',
-      ),
+      scheme: this.weaviateScheme || 'http',
+      host: this.weaviateHost || 'localhost:8080',
+      apiKey: new (weaviate as any).ApiKey(this.weaviateApiKey || 'default'),
     });
 
     const vectorStore = new WeaviateStore(
@@ -302,7 +312,7 @@ export class JobsService {
     // searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
     // searchTerm.push(...claimCheck);
 
-    if (process.env.SEARCH_GOOGLE === 'true') {
+    if (this.searchGoogle === 'true') {
       // const searchTermToUrl = async (term: string) => {
       //   let searchResults = await this.utilsService.searchTerm(term);
       //   const currentSearchResultFilter =
@@ -325,8 +335,8 @@ export class JobsService {
 
       const workerUUID = uuid();
 
-      if (process.env.SCRAPPER_QUEUE === 'true') {
-        await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
+      if (this.scrapperQueue === 'true') {
+        await axios(`${this.apiBaseUrl}/scrapper/${workerUUID}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json', // Include or omit based on your requirements
@@ -340,7 +350,7 @@ export class JobsService {
             console.log('polling loop');
             try {
               const response = await axios.get(
-                `${process.env.API_BASE_URL}/scrapper/${id}`,
+                `${this.apiBaseUrl}/scrapper/${id}`,
               );
               const data: Scrapper = response.data;
               if (data.status === ScrapperStatus.READY) {
@@ -370,8 +380,8 @@ export class JobsService {
         1,
       );
 
-      if (process.env.SCRAPPER_QUEUE === 'true') {
-        await axios(`${process.env.API_BASE_URL}/scrapper/${workerUUID}`, {
+      if (this.scrapperQueue === 'true') {
+        await axios(`${this.apiBaseUrl}/scrapper/${workerUUID}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json', // Include or omit based on your requirements
@@ -402,7 +412,7 @@ export class JobsService {
     //   metadataKeys: ['source'],
     // });
 
-    if (process.env.SEARCH_GOOGLE === 'true') {
+    if (this.searchGoogle === 'true') {
       await this.utilsService.webBrowserDocumentProcess(
         [
           ...searchResultFilter,
@@ -445,7 +455,7 @@ export class JobsService {
     //   baseRetriever: vectorStoreSearchQuery.asRetriever(), // Your existing vector store
     // });
 
-    let results: DocumentInterface<Record<string, any>>[] = [];
+    const results: DocumentInterface<Record<string, any>>[] = [];
 
     this.logger.verbose(searchTerm);
 
@@ -885,7 +895,9 @@ export class JobsService {
       
       For every segment/claim analyzed, meticulously justify the category assigned by referencing specific evidence or sources. Offer a comprehensive exploration of these sources, discussing their credibility and relevance in detail. Additionally, provide an in-depth examination of the contextual background and potential broader impacts of the statement, including any societal, political, or economic implications. Ensure that each explanation delves into the nuances of the topic, including possible counterarguments and perspectives, to furnish a well-rounded and thoroughly substantiated analysis.
       
-      Ensure each fact or claim is supported by a direct citation from a clearly identified, reputable source, such as 'According to a report by Reuters dated [Source Date], which states [specific fact]'. Refrain from using vague or generalized references to 'context documents' or 'available data'. Critical Reminder: This approach is essential for maintaining the analytical rigor and credibility of the evaluation. Continually review each segment to confirm that citations are appropriately detailed and accurately reflect the source material, ensuring the integrity and traceability of all information provided."`,
+      Ensure each fact or claim is supported by a direct citation from a clearly identified, reputable source, such as 'According to a report by Reuters dated [Source Date], which states [specific fact]'. Refrain from using vague or generalized references to 'context documents' or 'available data'. Critical Reminder: This approach is essential for maintaining the analytical rigor and credibility of the evaluation. Continually review each segment to confirm that citations are appropriately detailed and accurately reflect the source material, ensuring the integrity and traceability of all information provided."
+      
+      Do note, you only have a 4000 token limit, therefore if needed, you may remove segments but please alert us if you do`,
     });
 
     console.log(result);
