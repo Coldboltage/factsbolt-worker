@@ -270,6 +270,7 @@ export class UtilsService {
     let realVideoLink: string;
 
     if (downloadedTikTok.status === 'error') {
+      throw new Error("version broke")
       console.log('Error was found, proceeding with backup version');
       const backupTikTok = await backupDownloader(createJobDto.link);
       filteredVideoInformation = {

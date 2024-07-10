@@ -265,7 +265,7 @@ export class JobsService {
     title = 'No Title Given',
     transcriptionJob,
     text,
-  }: Job) {
+  }: Job): Promise<ChatGPT> {
     const model = new OpenAI({
       temperature: 0,
       modelName: 'gpt-4o',
@@ -813,8 +813,6 @@ export class JobsService {
       }
 
       You will be given an array after the transcription which will have the type of AmendedSpeech or more.
-
-      I've made these interfaces to help assist in the Output structure.
 
       interface Claim {
         claim: string;
