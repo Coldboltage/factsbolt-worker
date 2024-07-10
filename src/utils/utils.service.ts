@@ -42,8 +42,7 @@ import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 const path = require('path');
 const { alldl } = require('rahad-all-downloader');
-const serp = require("serp");
-
+const serp = require('serp');
 
 @Injectable()
 export class UtilsService {
@@ -117,14 +116,9 @@ export class UtilsService {
         url.includes('.PDF') ||
         url.includes('.cgi') ||
         url.includes('.download')
-      )
+      ) {
         return;
-
-      // const loader = new PuppeteerWebBaseLoader(url, {
-      //   launchOptions: {
-      //     headless: 'new',
-      //   },
-      // });
+      }
 
       const loader = new CheerioWebBaseLoader(url);
 
@@ -217,6 +211,7 @@ export class UtilsService {
       } catch (error) {
         console.log(error);
         console.log(`${url} failed`);
+        return;
       }
 
       console.log('done');
@@ -270,7 +265,7 @@ export class UtilsService {
     let realVideoLink: string;
 
     if (downloadedTikTok.status === 'error') {
-      throw new Error("version broke")
+      throw new Error('version broke');
       console.log('Error was found, proceeding with backup version');
       const backupTikTok = await backupDownloader(createJobDto.link);
       filteredVideoInformation = {
