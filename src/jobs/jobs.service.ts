@@ -5,7 +5,9 @@ import {
   ChatGPT,
   CompletedVideoJob,
   FullJob,
+  FullTextJob,
   Job,
+  JobType,
   Speech,
   TranscriptionJob,
 } from './entities/job.entity';
@@ -14,7 +16,7 @@ import * as fs from 'fs-extra';
 import { TranscribeAudioDto } from './dto/transcribe-audio.dto';
 import { ClientProxy } from '@nestjs/microservices';
 import { Configuration, OpenAIApi } from 'openai';
-import { OpenAI } from '@langchain/openai';
+import { OpenAI, OpenAIEmbeddings } from '@langchain/openai';
 import { PromptTemplate } from '@langchain/core/prompts';
 
 import { loadQAStuffChain } from 'langchain/chains';
@@ -36,7 +38,7 @@ import { Scrapper, ScrapperStatus } from '../scrapper/entities/scrapper.entity';
 import { uuid } from 'uuidv4';
 import { CohereEmbeddings } from '@langchain/cohere';
 import { ConfigService } from '@nestjs/config';
-
+import { TextOnlyDto } from './dto/text-only.dto';
 @Injectable()
 export class JobsService {
   constructor(
@@ -58,6 +60,7 @@ export class JobsService {
   private searchGoogle = this.configService.get<string>('SEARCH_GOOGLE');
   private scrapperQueue = this.configService.get<string>('SCRAPPER_QUEUE');
   private apiBaseUrl = this.configService.get<string>('API_BASE_URL');
+  private cohereApiKey = this.configService.get<string>('COHERE_API_KEY')
 
   async onApplicationBootstrap() {
     await this.client.connect();
@@ -262,10 +265,11 @@ export class JobsService {
   }
 
   async factCheckLang({
+    jobType,
     title = 'No Title Given',
     transcriptionJob,
     text,
-  }: Job) {
+  }: Job): Promise<ChatGPT> {
     const model = new OpenAI({
       temperature: 0,
       modelName: 'gpt-4o',
@@ -470,9 +474,24 @@ export class JobsService {
       claim: string,
     ): Promise<DocumentInterface<Record<string, any>>[]> => {
       this.logger.debug(claim);
-      const test = await vectorStoreRetriever.getRelevantDocuments(claim);
-      this.logger.verbose(test);
-      return test;
+      const docs = await vectorStoreRetriever.getRelevantDocuments(claim);
+
+      // Time to rerank!
+
+      // const cohereRerank = new CohereRerank({
+      //   apiKey: this.cohereApiKey, // Default
+      //   model: 'rerank-english-v3.0',
+      // });
+
+      // const rerankedDocuments = await cohereRerank.rerank(docs, claim, {
+      //   topN: 3,
+      // });
+
+      // console.log(rerankedDocuments);
+
+      //
+      this.logger.verbose(docs);
+      return docs;
     };
 
     const claimPromises = searchTerm.map((claim) => getDocByClaim(claim));
@@ -814,8 +833,6 @@ export class JobsService {
 
       You will be given an array after the transcription which will have the type of AmendedSpeech or more.
 
-      I've made these interfaces to help assist in the Output structure.
-
       interface Claim {
         claim: string;
         category: Category
@@ -968,6 +985,7 @@ export class JobsService {
     //   transcriptionJob.utterance,
     // );
     const completeFactsJob = await this.factCheckLang({
+      jobType: JobType.VIDEO,
       title: completedVideoJob.video.name,
       transcriptionJob: transcriptionJob,
     });
@@ -990,6 +1008,29 @@ export class JobsService {
     this.client.emit('completedJob', fullJob);
 
     return fullJob;
+  }
+
+  async textFullJob(textOnlyDto: TextOnlyDto): Promise<FullTextJob> {
+    const completedTextJob = await this.factCheckLang({
+      jobType: JobType.TEXT,
+      title: textOnlyDto.title,
+      text: textOnlyDto.text,
+    });
+
+    const fullTextJob: FullTextJob = {
+      text: {
+        text: textOnlyDto.text,
+      },
+      chatgpt: {
+        ...completedTextJob,
+      },
+    };
+
+    console.log(fullTextJob);
+
+    this.client.emit('completedTextJob', fullTextJob);
+
+    return fullTextJob;
   }
 
   // Utility Functions
