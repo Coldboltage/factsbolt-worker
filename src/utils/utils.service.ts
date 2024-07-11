@@ -43,6 +43,9 @@ import axios from 'axios';
 const path = require('path');
 const { alldl } = require('rahad-all-downloader');
 const serp = require('serp');
+import { PlaywrightWebBaseLoader } from 'langchain/document_loaders/web/playwright';
+import { CohereRerank } from '@langchain/cohere';
+
 
 @Injectable()
 export class UtilsService {
@@ -52,6 +55,7 @@ export class UtilsService {
   private useLocalScrapper = true;
   private scrapperApi = this.configService.get<string>('SCRAPPER_API');
   private serperApi = this.configService.get<string>('SERPER_APIKEY');
+  private cohereApiKey = this.configService.get<string>('COHERE_API_KEY')
 
   async searchTerm(query: string): Promise<SearchResult[]> {
     console.log(query);
@@ -116,11 +120,13 @@ export class UtilsService {
         url.includes('.cgi') ||
         url.includes('.download')
       ) {
+        this.logger.error('includes error');
         return;
       }
 
       this.logger.log(`Documenting ${url}`);
-      const loader = new CheerioWebBaseLoader(url);
+      // const loader = new CheerioWebBaseLoader(url);
+      const loader = new PlaywrightWebBaseLoader(url);
 
       // const loader = new CheerioWebBaseLoader(result);
 
@@ -130,6 +136,7 @@ export class UtilsService {
         this.logger.debug('loading started');
         docs = await loader.load();
       } catch (error) {
+        this.logger.error('Could not load document');
         // console.log(`${result} failed`);
         return;
       }
@@ -157,7 +164,7 @@ export class UtilsService {
       try {
         newDocuments = await sequence.invoke(docs);
       } catch (error) {
-        console.log('invoke broke');
+        this.logger.error('invoke broke');
         return;
       }
 
@@ -180,10 +187,27 @@ export class UtilsService {
         `Filtered Documents Amount: ${filteredDocuments.length}`,
       );
 
-      if (filteredDocuments.length > 1200) {
-        this.logger.debug('too many documents to handle');
-        return;
-      }
+      // if (filteredDocuments.length > 1200) {
+      //   this.logger.debug('too many documents to handle');
+      //   return;
+      // }
+
+      // Time to rerank!
+
+      const cohereRerank = new CohereRerank({
+        apiKey: this.cohereApiKey, // Default
+        model: 'rerank-english-v3.0',
+      });
+
+      const rerankedDocuments = await cohereRerank.rerank(docs, claim, {
+        topN: 3,
+      });
+
+      console.log(rerankedDocuments);
+
+      await new Promise((r) => setTimeout(r, 1000000));
+
+      //
 
       try {
         // await vectorStore.delete({

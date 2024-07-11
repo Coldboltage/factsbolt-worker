@@ -36,9 +36,11 @@ import { DocumentInterface } from '@langchain/core/documents';
 import { z } from 'zod';
 import { Scrapper, ScrapperStatus } from '../scrapper/entities/scrapper.entity';
 import { uuid } from 'uuidv4';
-import { CohereEmbeddings } from '@langchain/cohere';
+import { CohereEmbeddings, CohereRerank } from '@langchain/cohere';
+
 import { ConfigService } from '@nestjs/config';
 import { TextOnlyDto } from './dto/text-only.dto';
+
 @Injectable()
 export class JobsService {
   constructor(
@@ -286,7 +288,7 @@ export class JobsService {
 
     const vectorStore = new WeaviateStore(
       new CohereEmbeddings({
-        // model: 'embed-english-v3.0',
+        model: 'embed-english-light-v3.0',
       }),
       {
         client,
@@ -474,9 +476,9 @@ export class JobsService {
       claim: string,
     ): Promise<DocumentInterface<Record<string, any>>[]> => {
       this.logger.debug(claim);
-      const docs = await vectorStoreRetriever.getRelevantDocuments(claim);
+      const docs = await vectorStoreRetriever.invoke(claim);
 
-      // Time to rerank!
+      // // Time to rerank!
 
       // const cohereRerank = new CohereRerank({
       //   apiKey: this.cohereApiKey, // Default
@@ -489,7 +491,9 @@ export class JobsService {
 
       // console.log(rerankedDocuments);
 
-      //
+      // await new Promise((r) => setTimeout(r, 1000000));
+
+      // //
       this.logger.verbose(docs);
       return docs;
     };
