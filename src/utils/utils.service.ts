@@ -108,7 +108,6 @@ export class UtilsService {
     const setSiteLinks = [...new Set([...siteLinks])];
 
     const processUrl = async (url: string) => {
-      this.logger.log(`Documenting ${url}`);
       if (
         !url ||
         url.includes('youtube') ||
@@ -120,6 +119,7 @@ export class UtilsService {
         return;
       }
 
+      this.logger.log(`Documenting ${url}`);
       const loader = new CheerioWebBaseLoader(url);
 
       // const loader = new CheerioWebBaseLoader(result);
