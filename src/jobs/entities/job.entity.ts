@@ -30,6 +30,16 @@ export interface TranscriptionJob {
   text: string;
   utterance: AmendedSpeech[];
 }
+
+export interface TextJob {
+  id?: string;
+  text: string;
+}
+
+export interface FullTextJob {
+  text: TextJob;
+  chatgpt: ChatGPT;
+}
 export interface FullJob {
   video: VideoJob;
   transcription: TranscriptionJob;
@@ -70,7 +80,14 @@ export interface Words {
   speaker: string;
 }
 
+export enum JobType {
+  VIDEO = 'VIDEO',
+  TEXT = 'TEXT',
+  WEBSITE = 'WEBSITE',
+}
+
 export interface Job {
+  jobType: JobType;
   title?: string;
   transcriptionJob?: TranscriptionJob;
   text?: string;
