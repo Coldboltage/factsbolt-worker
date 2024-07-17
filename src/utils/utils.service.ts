@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { SearchResult } from './utils.entity';
-import { MozillaReadabilityTransformer } from '@langchain/community/document_transformers/mozilla_readability';
-import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
 import { Document } from 'langchain/document';
 import { WeaviateStore } from '@langchain/weaviate';
 import { CreateJobDto } from '../jobs/dto/create-job.dto';
@@ -10,7 +8,6 @@ import {
   AudioInformation,
   CompletedVideoJob,
 } from '../jobs/entities/job.entity';
-import { CheerioWebBaseLoader } from 'langchain/document_loaders/web/cheerio';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { AmendedSpeech } from './utils.types';
 import { OpenAI } from '@langchain/openai';
@@ -27,7 +24,7 @@ import {
 } from 'rxjs';
 const youtubedl = require('youtube-dl-exec');
 const stripchar = require('stripchar').StripChar;
-const { dlAudio, dlAudioVideo } = require('youtube-exec');
+const { dlAudioVideo } = require('youtube-exec');
 const { TiktokDL } = require('@tobyg74/tiktok-api-dl');
 const download = require('download');
 const fs = require('fs');
@@ -45,17 +42,24 @@ const { alldl } = require('rahad-all-downloader');
 const serp = require('serp');
 import { PlaywrightWebBaseLoader } from 'langchain/document_loaders/web/playwright';
 import { CohereRerank } from '@langchain/cohere';
+import { StaticPool } from 'node-worker-threads-pool';
+import { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import { CheerioWebBaseLoader } from 'langchain/document_loaders/web/cheerio';
+import { HNSWLib } from '@langchain/community/vectorstores/hnswlib';
 
+const os = require('os');
+
+const numCores = os.cpus().length;
+const poolSize = Math.max(numCores - 2, 1); // Ensure at least one worker
 
 @Injectable()
 export class UtilsService {
   constructor(private configService: ConfigService) {}
 
   private readonly logger = new Logger(UtilsService.name);
-  private useLocalScrapper = true;
+  private useLocalScrapper = false;
   private scrapperApi = this.configService.get<string>('SCRAPPER_API');
   private serperApi = this.configService.get<string>('SERPER_APIKEY');
-  private cohereApiKey = this.configService.get<string>('COHERE_API_KEY')
 
   async searchTerm(query: string): Promise<SearchResult[]> {
     console.log(query);
@@ -102,22 +106,53 @@ export class UtilsService {
     return urlList;
   }
 
+  // Create a static pool with 4 workers
+  private staticPool = new StaticPool({
+    size: poolSize,
+    task: async (data, chunkSize) => {
+      const { docs } = data;
+      const RecursiveCharacterTextSplitter =
+        require('langchain/text_splitter').RecursiveCharacterTextSplitter;
+      const MozillaReadabilityTransformer =
+        require('@langchain/community/document_transformers/mozilla_readability').MozillaReadabilityTransformer;
+
+      const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
+        chunkSize: chunkSize,
+        chunkOverlap: 400,
+        // separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
+      });
+
+      const transformer = new MozillaReadabilityTransformer();
+      const sequence = splitter.pipe(transformer);
+
+      try {
+        const newDocuments = await sequence.invoke(docs);
+        return newDocuments;
+      } catch (error) {
+        throw new Error('invoke broke');
+      }
+    },
+  });
+
   async webBrowserDocumentProcess(
     siteLinks: string[],
-    vectorStore: WeaviateStore,
+    vectorStore: HNSWLib,
     fullSite?: boolean,
   ): Promise<void> {
     this.logger.debug(`siteLink parameter: ${siteLinks}`);
 
     const setSiteLinks = [...new Set([...siteLinks])];
 
-    const processUrl = async (url: string) => {
+    const processUrl = async (url: string, chunkSize) => {
       if (
         !url ||
         url.includes('youtube') ||
         url.includes('pdf') ||
         url.includes('.PDF') ||
         url.includes('.cgi') ||
+        url.includes('video') ||
+        url.includes('live') || //
+        url.includes('archive') ||
         url.includes('.download')
       ) {
         this.logger.error('includes error');
@@ -125,8 +160,8 @@ export class UtilsService {
       }
 
       this.logger.log(`Documenting ${url}`);
-      // const loader = new CheerioWebBaseLoader(url);
-      const loader = new PlaywrightWebBaseLoader(url);
+      const loader = new CheerioWebBaseLoader(url);
+      // const loader = new PlaywrightWebBaseLoader(url);
 
       // const loader = new CheerioWebBaseLoader(result);
 
@@ -145,25 +180,26 @@ export class UtilsService {
 
       // Check from splitter if that's the bottleneck for bit pdf files
 
-      const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
-        chunkSize: 600, // Roughly double the current estimated chunk size
-        chunkOverlap: 20, // This is arbitrary; adjust based on your needs
-        separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
-      });
+      // const splitter = RecursiveCharacterTextSplitter.fromLanguage('html', {
+      //   chunkSize: 600, // Roughly double the current estimated chunk size
+      //   chunkOverlap: 20, // This is arbitrary; adjust based on your needs
+      //   separators: ['\n\n', '. ', '! ', '? ', '\n', ' ', ''],
+      // });
 
-      const transformer = new MozillaReadabilityTransformer();
+      // const transformer = new MozillaReadabilityTransformer();
 
-      const sequence = splitter.pipe(transformer);
+      // const sequence = splitter.pipe(transformer);
 
-      this.logger.debug('splitter completed');
+      // this.logger.debug('splitter completed');
 
       let newDocuments;
 
       // Invoking is the bottle neck learn what this is.
 
       try {
-        newDocuments = await sequence.invoke(docs);
+        newDocuments = await this.staticPool.exec({ docs }, chunkSize);
       } catch (error) {
+        console.log(error);
         this.logger.error('invoke broke');
         return;
       }
@@ -174,7 +210,9 @@ export class UtilsService {
 
       if (Array.isArray(newDocuments)) {
         filteredDocuments = newDocuments.filter((doc: Document) => {
-          return doc.pageContent ? true : false;
+          return doc.pageContent && isUsefulContent(doc.pageContent)
+            ? true
+            : false;
         });
       }
 
@@ -187,27 +225,103 @@ export class UtilsService {
         `Filtered Documents Amount: ${filteredDocuments.length}`,
       );
 
-      // if (filteredDocuments.length > 1200) {
-      //   this.logger.debug('too many documents to handle');
-      //   return;
-      // }
+      // TEST CODE
 
-      // Time to rerank!
+      function countOddCharacters(text) {
+        const oddCharacters = ['{', '}', ':', ',', '\\', '"', '\t', '\n'];
+        let count = 0;
 
-      const cohereRerank = new CohereRerank({
-        apiKey: this.cohereApiKey, // Default
-        model: 'rerank-english-v3.0',
-      });
+        for (const char of text) {
+          if (oddCharacters.includes(char)) {
+            count++;
+          }
+        }
+        return count;
+      }
 
-      const rerankedDocuments = await cohereRerank.rerank(docs, claim, {
-        topN: 3,
-      });
+      function isLikelyEncoded(text) {
+        const base64Pattern = /^[A-Za-z0-9+/=]+$/;
+        return base64Pattern.test(text.replace(/\s/g, '')) && text.length > 50;
+      }
 
-      console.log(rerankedDocuments);
+      function containsSuspiciousPatterns(text) {
+        // Check for patterns that are likely to be non-informative
+        const suspiciousPatterns = /\\{2,}|\"{2,}|:{2,}|,{2,}|\\s{2,}/;
+        return suspiciousPatterns.test(text);
+      }
 
-      await new Promise((r) => setTimeout(r, 1000000));
+      function isSpaceRatioLow(text, threshold = 0.1) {
+        const spaceCount = (text.match(/\s/g) || []).length;
+        const spaceRatio = spaceCount / text.length;
+        return spaceRatio < threshold;
+      }
+
+      function isUsefulContent(
+        text,
+        oddCharThreshold = 0.2,
+        minTextLength = 100,
+        spaceThreshold = 0.1,
+      ) {
+        // Check for encoded content
+        if (isLikelyEncoded(text)) {
+          return false;
+        }
+
+        // Check for minimum length
+        if (text.length < minTextLength) {
+          return false;
+        }
+
+        // Calculate the ratio of odd characters to total characters
+        const oddCharacterCount = countOddCharacters(text);
+        const oddCharRatio = oddCharacterCount / text.length;
+
+        // Flag if the ratio exceeds the threshold
+        if (oddCharRatio > oddCharThreshold) {
+          return false;
+        }
+
+        // Check for suspicious patterns
+        if (containsSuspiciousPatterns(text)) {
+          return false;
+        }
+
+        // Check for low space ratio
+        if (isSpaceRatioLow(text, spaceThreshold)) {
+          return false;
+        }
+
+        // Further checks can be added here (e.g., readability score, keyword filtering)
+        return true;
+      }
 
       //
+
+      if (filteredDocuments.length > 2000) {
+        this.logger.debug(`too many documents to handle url: ${url}`);
+        return;
+      } else if (filteredDocuments.length === 0) {
+        this.logger.debug(`0 documents: ${url}`);
+        chunkTooBigLinks.push(url);
+        return;
+      }
+
+      // // Time to rerank!
+
+      // const cohereRerank = new CohereRerank({
+      //   apiKey: this.cohereApiKey, // Default
+      //   model: 'rerank-english-v3.0',
+      // });
+
+      // const rerankedDocuments = await cohereRerank.rerank(docs, claim, {
+      //   topN: 3,
+      // });
+
+      // console.log(rerankedDocuments);
+
+      // await new Promise((r) => setTimeout(r, 1000000));
+
+      // //
 
       try {
         // await vectorStore.delete({
@@ -220,17 +334,6 @@ export class UtilsService {
         //   },
         // });
         await vectorStore.addDocuments(filteredDocuments);
-        // await WeaviateStore.fromDocuments(
-        //   filteredDocuments,
-        //   new OpenAIEmbeddings({
-        //     batchSize: 512,
-        //   }),
-        //   {
-        //     client: this.client,
-        //     indexName: 'Factsbolt',
-        //     metadataKeys: ['source'],
-        //   },
-        // );
         this.logger.debug('documents added to weaviate');
       } catch (error) {
         console.log(error);
@@ -241,9 +344,18 @@ export class UtilsService {
       console.log('done');
     };
 
-    const promises = setSiteLinks.map((url) => processUrl(url));
+    const chunkTooBigLinks: string[] = [];
+
+    const promises = setSiteLinks.map((url) => processUrl(url, 4000));
 
     await Promise.all(promises);
+
+    if (chunkTooBigLinks) {
+      const tooBigPromises = chunkTooBigLinks.map((url) =>
+        processUrl(url, 800),
+      );
+      await Promise.all(tooBigPromises);
+    }
 
     this.logger.debug('Complete');
   }
@@ -790,6 +902,77 @@ export class UtilsService {
 
   // Explanation: The main claim, categorized as a Grounded Opinion, expresses the speaker's apprehension that people in the United States are increasingly looking towards government action as the primary means to resolve issues. This reflects a subjective viewpoint, shaped by the speaker's understanding of freedom and governance. It's based on the libertarian belief in minimal government intervention in personal and economic matters, highlighting a perspective that values individual or market-based solutions over governmental ones. The claim suggests that this reliance on government might undermine individual freedoms and lead to societal conflicts.
 
+  async contextBuilder(transcript: string, context = '') {
+    const parser = new CommaSeparatedListOutputParser();
+
+    const model = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4o',
+    });
+
+    const modelTurbo = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-3.5-turbo',
+    });
+
+    const chain = RunnableSequence.from([
+      PromptTemplate.fromTemplate(
+        `Provide pairs of specific search queries to gather detailed context and background information based on the following text. Each pair should include one hyper-focused query directly related to the main subject and one broader query that complements it by providing related professional context or background information. Ensure the queries are precise and avoid general terms or broad topics. The queries should target unique elements, be time-sensitive, and reflect subtle details such as specific names, events, and dates. Recognize and incorporate nuances in the text to ensure comprehensive understanding of the themes discussed. Make sure the list is concise, relevant, and comma-separated, with a comma after each query. Today's date is ${new Date()}. \n {transcript} {context} {format_instructions}`,
+      ),
+      new OpenAI({
+        temperature: 0,
+        modelName: 'gpt-4o',
+      }),
+      parser,
+    ]);
+
+    const response = await chain.invoke({
+      transcript,
+      context,
+      format_instructions: parser.getFormatInstructions(),
+    });
+
+    console.log(response);
+
+    const queryPromiseList = response.map((query) => this.contextSearch(query));
+
+    const returnedQueries = await Promise.all(queryPromiseList);
+
+    const compressionQueryPromises = returnedQueries.map(async (query) => {
+      const promptTemplate = PromptTemplate.fromTemplate(
+        'Compress into a single sentence please {query}',
+      );
+
+      const chain = RunnableSequence.from([promptTemplate, modelTurbo]);
+
+      const result = await chain.invoke({ query: JSON.stringify(query) });
+
+      return result;
+    });
+
+    const compressedQueries = await Promise.all(compressionQueryPromises);
+
+    return compressedQueries;
+  }
+
+  async contextSearch(claim: string): Promise<string> {
+    const data = JSON.stringify({
+      q: `${claim}`,
+    });
+
+    const config = {
+      method: 'post',
+      url: 'https://google.serper.dev/search',
+      headers: {
+        'X-API-KEY': this.serperApi,
+        'Content-Type': 'application/json',
+      },
+      data: data,
+    };
+
+    return (await axios(config)).data;
+  }
+
   async breakdownTranscript(transcript: AmendedSpeech[]) {
     const parser = new CommaSeparatedListOutputParser();
 
@@ -828,26 +1011,18 @@ export class UtilsService {
     return response;
   }
 
-  async getAllClaimsFromTranscript(text: string, title: string) {
+  async getAllClaimsFromTranscript(
+    text: string,
+    title: string,
+    textContent: string[],
+  ) {
     // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
     const parserList = new CommaSeparatedListOutputParser();
 
     const chain = RunnableSequence.from([
-      PromptTemplate.fromTemplate(`Extract key topics from the transcription and formulate broad, contextually relevant questions for factual verification, presented in a comma-separated list.
+      PromptTemplate.fromTemplate(`Extract key topics from the transcription and formulate broad, contextually relevant questions for factual verification, presented in a comma-separated list. Review the transcription to understand the main topic and analyze it to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and ensure each integrates into the overall theme of the discussion. For each identified claim, determine the essential elements requiring verification, considering the speaker's intent and the claim's contribution to the overall argument. Formulate broad, contextually relevant questions that are clear, concise, and standalone, ensuring each question can be understood without reference to the transcript. Avoid using exact phrases from the transcript in these questions. Where possible, create follow-up questions related to the transcript using the same rules stated. Instead, focus on related broader topics and supporting evidence surrounding the subject. Ensure each question reflects the broader context and narrative of the transcript, focusing on specific, verifiable details related to the main subject and avoiding direct references to the person or specific claims made. Each question should address a unique aspect of the transcript without redundancy. When dealing with numerical data, do not use commas. For example, write '1580 trillion' instead of '1580 trillion'. Additionally, do not use commas for listing items. Instead, use "and". For example, write 'USA and UK and EU' instead of 'USA, UK, EU'. For lists, write 'apples and oranges and bananas' instead of 'apples, oranges, bananas'. When combining large numbers and lists, write 'In the next 20 years, the population is expected to reach 8500000 in the USA and 67000000 in the UK and 83000000 in Germany' instead of 'In the next 20 years, the population is expected to reach 8500000 in the USA, 67000000 in the UK, and 83000000 in Germany'. Formulate questions in a factual and objective manner, avoiding subjective language, personal opinions, and colloquial expressions. Aim for each question to be contextually complete and interconnected, reflecting the overall narrative of the transcript. Compile the questions into a comma-separated list focused on factual verification and understanding of broader topics related to the main subject, providing a clear view of the claims' factual basis and their relationship to the overall narrative. This list will lay the groundwork for focused exploration in subsequent analysis.
 
-      Review the transcription to understand the main topic and analyze it to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and ensure each integrates into the overall theme of the discussion. For each identified claim, determine the essential elements requiring verification, considering the speaker's intent and the claim's contribution to the overall argument.
-      
-      Formulate broad, contextually relevant questions that are clear, concise, and standalone, ensuring each question can be understood without reference to the transcript. Avoid using exact phrases from the transcript in these questions. Instead, focus on related broader topics. Each question should be presented in a comma-separated list.
-      
-      Each question should reflect the content and narrative of the transcript, focusing on specific, verifiable details and avoiding broad or general inquiries. Ensure each question addresses a unique aspect of the transcript without redundancy. 
-      
-      When dealing with numerical data, do not use commas. For example, write '1580 trillion' instead of '1,580 trillion'. Additionally, do not use commas for listing items. Instead, use "and". For example, write 'USA and UK and EU' instead of 'USA, UK, EU'. More detailed examples include: write '2500' instead of '2,500', '3000000' instead of '3,000,000', and '45700000' instead of '45,700,000'. For lists, write 'apples and oranges and bananas' instead of 'apples, oranges, bananas', 'January and February and March' instead of 'January, February, March', and 'cats and dogs and rabbits' instead of 'cats, dogs, rabbits'. When combining large numbers and lists, write 'In the next 20 years, the population is expected to reach 8500000 in the USA and 67000000 in the UK and 83000000 in Germany' instead of 'In the next 20 years, the population is expected to reach 8,500,000 in the USA, 67,000,000 in the UK, and 83,000,000 in Germany'. Formulate questions in a factual and objective manner, avoiding subjective language, personal opinions, and colloquial expressions. Aim for each question to be contextually complete and interconnected, reflecting the overall narrative of the transcript.
-      
-      Compile the questions into a comma-separated list focused on factual verification and understanding of individual claims, providing a clear view of the claims' factual basis and their relationship to the overall narrative. This list will lay the groundwork for focused exploration in subsequent analysis.
-      
-      For example, if the transcription mentions, "Yesterday, the House passed a bill condemning President Biden's pause on sending certain weapons to Israel and progressive House staffers. Many were wearing masks, protested that vote on Capitol Hill," questions might include: "What are the reasons behind the House's decision to condemn Biden's pause on sending weapons to Israel", "What are the implications of the House passing the bill on US-Israel relations", "What are the current debates among House Democrats regarding US foreign policy on Israel", "What are the reasons for the recent protests by House staffers on Capitol Hill", "How has the Biden administration's policy on Israel evolved over recent months
-      
-      {format_instructions} {title} {transcription}`),
+      {format_instructions} {title} {transcription} {text_context}`),
       new OpenAI({
         temperature: 0,
         modelName: 'gpt-4o',
@@ -859,8 +1034,13 @@ export class UtilsService {
       transcription: text,
       title,
       format_instructions: parserList.getFormatInstructions(),
+      text_context: textContent.join(' '),
     });
+
+    console.log(text);
     this.logger.verbose(test);
+    console.log(textContent);
+    console.log('Done');
     return test;
   }
 
@@ -874,18 +1054,14 @@ export class UtilsService {
     concurrencyLimit: number,
   ): Promise<string[]> {
     console.log(searchTerms);
-    const fixedDelay = 100; // Fixed delay for each request
+    const fixedDelay = 0; // Fixed delay for each request
     let currentDelay = 0; // Initialize current delay
 
     const searchTermObservable = from(searchTerms).pipe(
       mergeMap((term, index) => {
         const delayedObservable = of(term).pipe(
           delay(currentDelay), // Apply the current delay
-          concatMap(() =>
-            this.useLocalScrapper
-              ? this.googleSearch(term)
-              : this.serperGoogleSearch(term),
-          ), // Perform the search after the delay
+          concatMap(() => this.serperGoogleSearch(term)), // Perform the search after the delay
         );
 
         // Increment the delay for the next term, or reset if at the concurrency limit
@@ -908,7 +1084,7 @@ export class UtilsService {
 
   async googleSearch(query: string): Promise<string[]> {
     // const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com OR site:techcrunch.com OR site:wired.com OR site:theverge.com OR site:arstechnica.com OR site:forbes.com OR site:businessinsider.com OR site:ft.com OR site:wsj.com OR site:nationalgeographic.com OR site:scientificamerican.com OR site:nature.com OR site:newscientist.com OR site:espn.com OR site:bbc.com/sport OR site:skysports.com OR site:bleacherreport.com OR site:ign.com OR site:gamespot.com OR site:polygon.com OR site:kotaku.com OR site:hollywoodreporter.com OR site:variety.com OR site:ew.com OR site:deadline.com OR site:webmd.com OR site:mayoclinic.org OR site:healthline.com OR site:medicalnewstoday.com OR site:foreignaffairs.com OR site:economist.com OR site:cfr.org OR site:brookings.edu OR site:topgear.com OR site:motortrend.com OR site:autocar.co.uk OR site:caranddriver.com OR site:smithsonianmag.com OR site:npr.org OR site:apnews.com OR site:time.com`;
-    const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com OR site:techcrunch.com OR site:wired.com OR site:theverge.com OR site:arstechnica.com OR site:forbes.com OR site:businessinsider.com OR site:ft.com OR site:wsj.com OR site:nationalgeographic.com OR site:scientificamerican.com OR site:nature.com OR site:newscientist.com OR site:espn.com OR site:bbc.com/sport OR site:skysports.com OR site:bleacherreport.com OR site:ign.com OR site:gamespot.com OR site:polygon.com OR site:kotaku.com OR site:hollywoodreporter.com OR site:variety.com OR site:ew.com OR site:deadline.com OR site:webmd.com OR site:mayoclinic.org OR site:healthline.com OR site:medicalnewstoday.com OR site:foreignaffairs.com OR site:economist.com OR site:cfr.org OR site:brookings.edu OR site:topgear.com OR site:motortrend.com OR site:autocar.co.uk OR site:caranddriver.com OR site:smithsonianmag.com OR site:npr.org OR site:apnews.com OR site:time.com -site:infowars.com -site:naturalnews.com -site:beforeitsnews.com -site:newspunch.com -site:thesun.co.uk -site:breitbart.com`;
+    const suffix = `site:bbc.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com OR site:techcrunch.com OR site:wired.com OR site:theverge.com OR site:arstechnica.com OR site:forbes.com OR site:businessinsider.com OR site:ft.com OR site:wsj.com OR site:nationalgeographic.com OR site:scientificamerican.com OR site:nature.com OR site:newscientist.com OR site:espn.com OR site:bbc.com/sport OR site:skysports.com OR site:bleacherreport.com OR site:ign.com OR site:gamespot.com OR site:polygon.com OR site:kotaku.com OR site:hollywoodreporter.com OR site:variety.com OR site:ew.com OR site:deadline.com OR site:webmd.com OR site:mayoclinic.org OR site:healthline.com OR site:medicalnewstoday.com OR site:foreignaffairs.com OR site:economist.com OR site:cfr.org OR site:brookings.edu OR site:topgear.com OR site:motortrend.com OR site:autocar.co.uk OR site:caranddriver.com OR site:smithsonianmag.com OR site:npr.org OR site:apnews.com OR site:time.com -site:infowars.com -site:naturalnews.com -site:beforeitsnews.com -site:newspunch.com -site:thesun.co.uk -site:breitbart.com`;
     const options = {
       host: 'google.com',
       qs: {
@@ -943,7 +1119,7 @@ export class UtilsService {
   }
 
   async serperGoogleSearch(query: string): Promise<string[]> {
-    const suffix = `site:bbc.com OR site:cnn.com OR site:nytimes.com OR site:theguardian.com OR site:reuters.com OR site:aljazeera.com OR site:nbcnews.com OR site:washingtonpost.com OR site:bloomberg.com OR site:techcrunch.com OR site:wired.com OR site:theverge.com OR site:arstechnica.com OR site:forbes.com OR site:businessinsider.com OR site:ft.com OR site:wsj.com OR site:nationalgeographic.com OR site:scientificamerican.com OR site:nature.com OR site:newscientist.com OR site:espn.com OR site:bbc.com/sport OR site:skysports.com OR site:bleacherreport.com OR site:ign.com OR site:gamespot.com OR site:polygon.com OR site:kotaku.com OR site:hollywoodreporter.com OR site:variety.com OR site:ew.com OR site:deadline.com OR site:webmd.com OR site:mayoclinic.org OR site:healthline.com OR site:medicalnewstoday.com OR site:foreignaffairs.com OR site:economist.com OR site:cfr.org OR site:brookings.edu OR site:topgear.com OR site:motortrend.com OR site:autocar.co.uk OR site:caranddriver.com OR site:smithsonianmag.com OR site:npr.org OR site:apnews.com OR site:time.com -site:infowars.com -site:naturalnews.com -site:beforeitsnews.com -site:newspunch.com -site:thesun.co.uk -site:breitbart.com`;
+    const suffix = `-site:infowars.com -site:naturalnews.com -site:beforeitsnews.com -site:newspunch.com -site:thesun.co.uk -site:breitbart.com`;
 
     const data = JSON.stringify({
       q: `${query} ${suffix}`,

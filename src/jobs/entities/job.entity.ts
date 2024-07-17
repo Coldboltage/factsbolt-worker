@@ -91,4 +91,5 @@ export interface Job {
   title?: string;
   transcriptionJob?: TranscriptionJob;
   text?: string;
+  context?: string;
 }

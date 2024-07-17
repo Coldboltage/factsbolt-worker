@@ -40,6 +40,8 @@ import { CohereEmbeddings, CohereRerank } from '@langchain/cohere';
 
 import { ConfigService } from '@nestjs/config';
 import { TextOnlyDto } from './dto/text-only.dto';
+import { OllamaEmbeddings } from '@langchain/community/embeddings/ollama';
+import { HNSWLib } from "@langchain/community/vectorstores/hnswlib";
 
 @Injectable()
 export class JobsService {
@@ -62,7 +64,7 @@ export class JobsService {
   private searchGoogle = this.configService.get<string>('SEARCH_GOOGLE');
   private scrapperQueue = this.configService.get<string>('SCRAPPER_QUEUE');
   private apiBaseUrl = this.configService.get<string>('API_BASE_URL');
-  private cohereApiKey = this.configService.get<string>('COHERE_API_KEY')
+  private cohereApiKey = this.configService.get<string>('COHERE_API_KEY');
 
   async onApplicationBootstrap() {
     await this.client.connect();
@@ -271,12 +273,11 @@ export class JobsService {
     title = 'No Title Given',
     transcriptionJob,
     text,
+    context = '',
   }: Job): Promise<ChatGPT> {
     const model = new OpenAI({
       temperature: 0,
       modelName: 'gpt-4o',
-      // modelName: 'gpt-4-0314',
-      // modelName: 'gpt-3.5-turbo-1106',
     });
 
     // Something wrong with the weaviate-ts-client types, so we need to disable
@@ -286,15 +287,26 @@ export class JobsService {
       apiKey: new (weaviate as any).ApiKey(this.weaviateApiKey || 'default'),
     });
 
+    const embeddings = new OllamaEmbeddings({
+      model: 'llama3', // default value
+      baseUrl: 'http://localhost:11434', // default value
+    });
+
     const vectorStore = new WeaviateStore(
-      new CohereEmbeddings({
-        model: 'embed-english-light-v3.0',
+      new OpenAIEmbeddings({
+        model: 'text-embedding-3-small',
       }),
       {
         client,
         indexName: 'Factsbolt',
         metadataKeys: ['source'],
       },
+    );
+
+    const memoryVectorStore = await HNSWLib.fromTexts(
+      ['Hello world', 'Bye bye', 'hello nice world'],
+      [{ id: 2 }, { id: 1 }, { id: 3 }],
+      new OpenAIEmbeddings(),
     );
 
     const llm = new OpenAI({ temperature: 0, modelName: 'gpt-4o' });
@@ -310,9 +322,13 @@ export class JobsService {
     //   title,
     // );
 
+    const textContext = !text
+      ? await this.utilsService.contextBuilder(transcriptionJob.text, context)
+      : await this.utilsService.contextBuilder(text, context);
+
     const searchTerm = !text
-      ? await this.combinedClaimSetup(transcriptionJob.text, title)
-      : await this.combinedClaimSetup(text, title);
+      ? await this.combinedClaimSetup(transcriptionJob.text, title, textContext)
+      : await this.combinedClaimSetup(text, title, textContext);
     // const searchTerm = await this.combinedClaimSetup(transcriptionJob, title);
 
     // searchTerm = await this.transcriptSearchGen(transcriptionJob, title);
@@ -383,7 +399,7 @@ export class JobsService {
 
       searchResultFilter = await this.utilsService.processSearchTermsRxJS(
         searchTerm,
-        1,
+        20,
       );
 
       if (this.scrapperQueue === 'true') {
@@ -424,7 +440,7 @@ export class JobsService {
           ...searchResultFilter,
           // ...searchResultFilterReuters
         ],
-        vectorStore,
+        memoryVectorStore,
       );
     }
 
@@ -442,7 +458,7 @@ export class JobsService {
 
     const baseCompressorModel = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-3.5-turbo-1106',
+      modelName: 'gpt-3.5-turbo',
       // modelName: 'gpt-4-0314',
       // modelName: 'gpt-3.5-turbo-1106',
     });
@@ -452,7 +468,7 @@ export class JobsService {
     // NORMAL VECTORSTORE
     const vectorStoreRetriever = new ContextualCompressionRetriever({
       baseCompressor,
-      baseRetriever: vectorStore.asRetriever(), // Your existing vector store
+      baseRetriever: memoryVectorStore.asRetriever(), // Your existing vector store
     });
 
     // COHERE SPECIFIC
@@ -580,7 +596,18 @@ export class JobsService {
     const result = await chain.invoke({
       input_documents: fullResults,
       question: `
-      Please evaluate the following transcript with the help of the documents/context provided, as context that might have come out after the December 2023 training data. 
+      Please evaluate the following transcript and only the transcript with the help of the documents/context provided. These documents should be used solely as context and not to be used for validating claims or segments within the transcript. The documents may include context that might have come out after the December 2023 training data.
+
+      Please note that the transcript is an array of speeches from speakers using this format:
+
+      title of video: ${title},
+      Transcript of video to text to factcheck against: ${JSON.stringify(
+        !text ? transcriptionJob.utterance : text,
+        null,
+        2,
+      )}.
+
+      You have now been presented the Transcript to fact check against. Again, the documents are only there to be used as context.
             
       Labelled Context Summary, create a brief context or summary of the overall conversation to help set the stage for the detailed analysis. Proceed with a methodical analysis of each major statement, while simultaneously maintaining an awareness of the overall context of the conversation. 
 
@@ -828,87 +855,66 @@ export class JobsService {
 
       Labelled, Resources, then, provide a list of resources or facts that offer greater context and insight into the broader issue. Ensure these resources come from credible and respected origins, are recognized for their sound advice and dependability across the relevant community, have stood the test of scrutiny and critical examination, are penned by authors without significant controversies in their background, and where feasible, include direct links for further exploration. Recommendations should lean towards sources with broad consensus, steering clear of those with mixed or contentious opinions.
 
-      Please note that the transcript is an array of speeches from speakers using this format:
-
-      export interface AmendedSpeech {
-        speaker: string;
-        text: string;
-      }
-
-      You will be given an array after the transcription which will have the type of AmendedSpeech or more.
-
-      interface Claim {
-        claim: string;
-        category: Category
-        Explanation: string
-      }
-
-      interface MainClaim {
-        mainClaim: string;
-        category: Category;
-        explanation: string;
-      }
-
-      interface FactCheckSentence {
-        speaker: string;
-        text: string;
-        category: Category;
-        explanation: string
-        contextualAnalysis?: string // Optional field for contextual analysis
-        sourceVerification: string; 
-      }
-
-      enum Category {
-        ManipulativeOpinion = "Manipulative Opinion"
-        BaselessOpinion = "Baseless Opinion",
-        VerifiedFact = "Verified Fact",
-        MisleadingFact = "Misleading Fact",
-        UnverifiedClaims = "Unverified Claims",
-        GroundedSpeculation = "Grounded Speculation",
-        ManipulativeSpeculation = "Manipulative Speculation",
-        BaselessSpeculation = "Baseless Speculation",
-        PartiallyVerified = "Partially  Verified",
-        FundamentallyConfirmed = "Fundamentally Confirmed",
-        FactuallyIncorrect = "Factually Incorrect,
-        Question = "Question",
-        IncompleteStatement = "Incomplete Statement",
-        UnelaboratedDisagreement= "Unelaborated Disagreement",
-        MoralDisgustExpression = "Moral Disgust Expression"
-
-      }
-
-      interface Output {
-        summary: string;
-        claims: Claim[];
-        sentence: FactCheckSentence[]
-        overalAssesment: string;
-        consensusCheck: string;
-        factCheckConclusion: string;
-        considerationOfMultiplePerspectives: string;
-        democraticConclusion: string;
-        contextualConclusion: string;
-        middlegroundConclusion: string;
-        mainClaim: mainClaims;
-        furtherResources: string[] // with link
-      }
-
-      title of video: ${title},
-      Transcript of video to text: ${JSON.stringify(
-        !text ? transcriptionJob.utterance : text,
-        null,
-        2,
-      )}.
-
       If by any chance you can't assist, state exactly why, and show the transcript
 
       Note, I have done many of fact checking analysis jobs with gpt4 with no issues, therefore there should be no reason why you can't do this. All the information you need will be provided in the documents/context.
 
       Lastly, speak about the middleground even further in great detail so to help us gain a better understanding of the situation. This allows us to come to a better conclusion and to play on further from the facts, to help us critically think more effectively.
 
-      Follow the output example structure: ${example[0].output}
+      Follow the example structure: ${example[0].output}
       Here's another example structure: ${example[1].output}
 
-      Please note that in the output example, you can put any number of claims in. I have shown two. 
+      Please note that these are examples, you can put any number of claims in. I have shown two. 
+
+      The transcript will be presented as an array of speeches. Each speech contains:
+    - Speaker: The person speaking.
+    - Text: The spoken content.
+
+    Each evaluated segment can fall into one of the following categories:
+    - Manipulative Opinion
+    - Baseless Opinion
+    - Verified Fact
+    - Misleading Fact
+    - Unverified Claims
+    - Grounded Speculation
+    - Manipulative Speculation
+    - Baseless Speculation
+    - Partially Verified
+    - Fundamentally Confirmed
+    - Factually Incorrect
+    - Question
+    - Incomplete Statement
+    - Unelaborated Disagreement
+    - Moral Disgust Expression
+
+    Detailed Evaluation Structure:
+    1. Main Claim:
+       - Main claim of the transcript.
+       - Category of the claim.
+       - Explanation for the category.
+
+    2. Fact-Check Sentences:
+       - Each fact-checked sentence will include:
+         - Speaker
+         - Text
+         - Category
+         - Explanation
+         - Optional contextual analysis
+         - Source verification
+
+    3. Layout:
+       - Summary of the transcript
+       - List of all claims
+       - Fact-checked sentences
+       - Overall assessment
+       - Consensus check
+       - Fact-check conclusion
+       - Consideration of multiple perspectives
+       - Democratic conclusion
+       - Contextual conclusion
+       - Middleground conclusion
+       - Main claims
+       - Further resources (with links)
 
       ⚠️ Critical Reminder: In your analysis, strictly adhere to segmenting the transcript into individual FactCheckSentence instances. Each sentence or closely related group of sentences must be analyzed and reported as a separate FactCheckSentence. This segmentation is essential for a detailed and accurate evaluation. Do not analyze or report the transcript as a single, continuous text. 
       
@@ -922,6 +928,67 @@ export class JobsService {
     });
 
     console.log(result);
+
+    // export interface AmendedSpeech {
+    //   speaker: string;
+    //   text: string;
+    // }
+
+    // You will be given an array after the transcription which will have the type of AmendedSpeech or more.
+
+    //   claim: string;
+    //   category: Category
+    //   Explanation: string
+    // }
+
+    // interface MainClaim {
+    //   mainClaim: string;
+    //   category: Category;
+    //   explanation: string;
+    // }
+
+    // interface FactCheckSentence {
+    //   speaker: string;
+    //   text: string;
+    //   category: Category;
+    //   explanation: string
+    //   contextualAnalysis?: string // Optional field for contextual analysis
+    //   sourceVerification: string;
+    // }
+
+    // enum Category {
+    //   ManipulativeOpinion = "Manipulative Opinion"
+    //   BaselessOpinion = "Baseless Opinion",
+    //   VerifiedFact = "Verified Fact",
+    //   MisleadingFact = "Misleading Fact",
+    //   UnverifiedClaims = "Unverified Claims",
+    //   GroundedSpeculation = "Grounded Speculation",
+    //   ManipulativeSpeculation = "Manipulative Speculation",
+    //   BaselessSpeculation = "Baseless Speculation",
+    //   PartiallyVerified = "Partially  Verified",
+    //   FundamentallyConfirmed = "Fundamentally Confirmed",
+    //   FactuallyIncorrect = "Factually Incorrect,
+    //   Question = "Question",
+    //   IncompleteStatement = "Incomplete Statement",
+    //   UnelaboratedDisagreement= "Unelaborated Disagreement",
+    //   MoralDisgustExpression = "Moral Disgust Expression"
+
+    // }
+
+    // interface Layout {
+    //   summary: string;
+    //   claims: Claim[];
+    //   sentence: FactCheckSentence[]
+    //   overalAssesment: string;
+    //   consensusCheck: string;
+    //   factCheckConclusion: string;
+    //   considerationOfMultiplePerspectives: string;
+    //   democraticConclusion: string;
+    //   contextualConclusion: string;
+    //   middlegroundConclusion: string;
+    //   mainClaim: mainClaims;
+    //   furtherResources: string[] // with link
+    // }
 
     const parser = StructuredOutputParser.fromNamesAndDescriptions({
       context: 'extract the context section',
@@ -1019,6 +1086,7 @@ export class JobsService {
       jobType: JobType.TEXT,
       title: textOnlyDto.title,
       text: textOnlyDto.text,
+      context: textOnlyDto.context,
     });
 
     const fullTextJob: FullTextJob = {
@@ -1170,15 +1238,7 @@ export class JobsService {
     const parserList = new CommaSeparatedListOutputParser();
 
     const chain = RunnableSequence.from([
-      PromptTemplate.fromTemplate(`Begin by analyzing the title for initial context. Delve into the transcription, identifying key subjects, specific claims, statistics, or notable statements, regardless of the topic. Assess the importance of each element based on its emphasis within the transcript and its potential impact on the overall narrative or discussion.
-
-      Construct search queries that are tailored to these identified subjects and claims. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid special characters like question marks, periods, or non-alphanumeric symbols. Focus on creating queries that explore the specifics of the situation, prioritizing those aspects that are most central or repeatedly mentioned in the transcript.
-      
-      Aim to gather comprehensive and detailed information about each subject, utilizing current, credible, and scientific sources. Explore each subject in depth, examining its relevance to the main event or issue, including legal, ethical, societal, historical, or cultural aspects, as applicable.
-      
-      When formulating your queries, consider the variety and complexity of topics that might arise in the transcript. Tailor your queries to cover a wide range of potential areas, from specific factual verifications to broader contextual inquiries.
-      
-      Finally, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. Organize these queries based on the relevance and importance of each topic within the context of the transcript. This approach ensures a thorough and adaptable exploration of each significant aspect of the event or issue, tailored to the specific content of the transcript. This list should be of the 6 best queries you can think of.
+      PromptTemplate.fromTemplate(`Begin by analyzing the title for initial context. Delve into the transcription, identifying key subjects, specific claims, statistics, or notable statements, regardless of the topic. Assess the importance of each element based on its emphasis within the transcript and its potential impact on the overall narrative or discussion. Construct search queries tailored to these identified subjects and claims. Ensure queries are precise and succinct, ideally limited to 32 words, and avoid special characters like question marks, periods, or non-alphanumeric symbols. Focus on creating queries that explore the specifics of the situation, prioritizing aspects most central or repeatedly mentioned in the transcript. Aim to gather comprehensive and detailed information about each subject, utilizing current, credible, and scientific sources. Explore each subject in depth, examining its relevance to the main event or issue, including legal, ethical, societal, historical, or cultural aspects, as applicable. When formulating your queries, consider the variety and complexity of topics that might arise in the transcript. Tailor your queries to cover a wide range of potential areas, from specific factual verifications to broader contextual inquiries. Finally, create a list of targeted search queries, each corresponding to a key subject or claim identified in the transcription. Organize these queries based on the relevance and importance of each topic within the context of the transcript. This approach ensures a thorough and adaptable exploration of each significant aspect of the event or issue, tailored to the specific content of the transcript. This list should include the six best queries you can think of.
 
       {format_instructions} {title} {transcription}`),
       new OpenAI({
@@ -1197,24 +1257,33 @@ export class JobsService {
     return responseList;
   }
 
-  async combinedClaimSetup(text: string, title: string): Promise<string[]> {
+  async combinedClaimSetup(
+    text: string,
+    title: string,
+    textContext: string[],
+  ): Promise<string[]> {
     const listOfClaims = this.utilsService.getAllClaimsFromTranscript(
       text,
       title,
+      textContext,
     );
     console.log(text);
 
     const mainClaimFinderPromise = this.mainClaimFinder(text, title);
-    const hydeClaimList = this.hydeClaimList(text, title);
+    // const hydeClaimList = this.hydeClaimList(text, title);
 
-    const arrayPromises = [listOfClaims, mainClaimFinderPromise, hydeClaimList];
+    const arrayPromises = [
+      listOfClaims,
+      mainClaimFinderPromise,
+      // hydeClaimList
+    ];
 
     // if (aClaimFinderPromise) arrayPromises.push(aClaimFinderPromise);
 
     const combinedClaimsSearch = await Promise.all([
       listOfClaims,
       mainClaimFinderPromise,
-      hydeClaimList,
+      // hydeClaimList,
     ]);
     return combinedClaimsSearch.flat().filter((claim) => claim !== undefined);
   }
