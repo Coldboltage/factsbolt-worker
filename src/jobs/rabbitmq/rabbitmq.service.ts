@@ -7,6 +7,7 @@ import { UtilsService } from '../../utils/utils.service';
 import { TextOnlyDto } from '../dto/text-only.dto';
 import { FullJob } from '../../utils/utils.types';
 import { JobType } from '../entities/job.entity';
+import { StockCheckupJobDto } from '../dto/stock-job-dto';
 
 @Injectable()
 export class RabbitmqService {
@@ -57,5 +58,9 @@ export class RabbitmqService {
     console.log(data);
     return this.jobsService.textFullJob({ ...data });
     // return this.jobsService.factCheckLang({ jobType: JobType.TEXT, ...data });
+  }
+
+  async stockCheckupJob(data: StockCheckupJobDto) {
+    return this.jobsService.stockCheckupJob({ ...data });
   }
 }

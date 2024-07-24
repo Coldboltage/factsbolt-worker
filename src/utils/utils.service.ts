@@ -7,6 +7,8 @@ import {
   VideoJob,
   AudioInformation,
   CompletedVideoJob,
+  JobType,
+  Job,
 } from '../jobs/entities/job.entity';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { AmendedSpeech } from './utils.types';
@@ -143,7 +145,13 @@ export class UtilsService {
 
     const setSiteLinks = [...new Set([...siteLinks])];
 
-    const processUrl = async (url: string, chunkSize) => {
+    const timeout = (ms, timeout: NodeJS.Timeout) =>
+      new Promise((_, reject) => {
+        clearTimeout(timeout);
+        setTimeout(() => reject(new Error('Request timed out')), ms);
+      });
+
+    const processUrl = async (url: string, chunkSize, index = 0) => {
       if (
         !url ||
         url.includes('youtube') ||
@@ -165,13 +173,22 @@ export class UtilsService {
 
       // const loader = new CheerioWebBaseLoader(result);
 
-      let docs: Document<Record<string, any>>[];
+      let docs;
+      const pageLoader = setInterval(
+        () => console.log(`Still loading: ${url}`),
+        10000,
+      );
 
       try {
         this.logger.debug('loading started');
-        docs = await loader.load();
+
+        await new Promise((r) => setTimeout(r, 10 * index));
+
+        docs = await Promise.race([loader.load(), timeout(45000, pageLoader)]); // 45 seconds timeout
+        clearInterval(pageLoader);
       } catch (error) {
         this.logger.error('Could not load document');
+
         // console.log(`${result} failed`);
         return;
       }
@@ -346,7 +363,9 @@ export class UtilsService {
 
     const chunkTooBigLinks: string[] = [];
 
-    const promises = setSiteLinks.map((url) => processUrl(url, 4000));
+    const promises = setSiteLinks.map((url, index) =>
+      processUrl(url, 4000, index),
+    );
 
     await Promise.all(promises);
 
@@ -905,23 +924,25 @@ export class UtilsService {
   async contextBuilder(transcript: string, context = '') {
     const parser = new CommaSeparatedListOutputParser();
 
-    const model = new OpenAI({
-      temperature: 0,
-      modelName: 'gpt-4o',
-    });
-
     const modelTurbo = new OpenAI({
       temperature: 0,
-      modelName: 'gpt-3.5-turbo',
+      modelName: 'gpt-4o-mini',
     });
 
     const chain = RunnableSequence.from([
       PromptTemplate.fromTemplate(
-        `Provide pairs of specific search queries to gather detailed context and background information based on the following text. Each pair should include one hyper-focused query directly related to the main subject and one broader query that complements it by providing related professional context or background information. Ensure the queries are precise and avoid general terms or broad topics. The queries should target unique elements, be time-sensitive, and reflect subtle details such as specific names, events, and dates. Recognize and incorporate nuances in the text to ensure comprehensive understanding of the themes discussed. Make sure the list is concise, relevant, and comma-separated, with a comma after each query. Today's date is ${new Date()}. \n {transcript} {context} {format_instructions}`,
+        `Provide pairs of specific search queries to gather detailed context and background information based on the following text. Each pair should include one hyper-focused query directly related to the main subject and one broader query that complements it by providing related professional context or background information. Ensure the queries are precise, avoid general terms or broad topics, and reflect subtle details such as specific names, events, and dates. The queries should interpret the text rather than seeking exact quotes, capturing the essence and nuances to ensure a comprehensive understanding of the themes discussed. Make sure the list is concise, relevant, and comma-separated, without using quotation marks. Today's date is ${new Date()}. \n 
+        
+        This is the text: {transcript} 
+        
+        This is the context: {context}
+        
+        {format_instructions}
+        `,
       ),
       new OpenAI({
         temperature: 0,
-        modelName: 'gpt-4o',
+        modelName: 'gpt-4o-mini',
       }),
       parser,
     ]);
@@ -933,6 +954,7 @@ export class UtilsService {
     });
 
     console.log(response);
+    console.log('Go go ContextBuilder');
 
     const queryPromiseList = response.map((query) => this.contextSearch(query));
 
@@ -940,12 +962,14 @@ export class UtilsService {
 
     const compressionQueryPromises = returnedQueries.map(async (query) => {
       const promptTemplate = PromptTemplate.fromTemplate(
-        'Compress into a single sentence please {query}',
+        'Compress into a single paragrah please, highlighting the most demanding and recent information {query}',
       );
 
       const chain = RunnableSequence.from([promptTemplate, modelTurbo]);
 
       const result = await chain.invoke({ query: JSON.stringify(query) });
+
+      this.logger.verbose(result);
 
       return result;
     });
@@ -955,10 +979,12 @@ export class UtilsService {
     return compressedQueries;
   }
 
-  async contextSearch(claim: string): Promise<string> {
-    const data = JSON.stringify({
+  async contextSearch(claim: string, stock = false): Promise<string> {
+    const data: { q: string; tbs?: string } = {
       q: `${claim}`,
-    });
+    };
+
+    if (stock) data.tbs = 'qdr:d';
 
     const config = {
       method: 'post',
@@ -967,7 +993,7 @@ export class UtilsService {
         'X-API-KEY': this.serperApi,
         'Content-Type': 'application/json',
       },
-      data: data,
+      data: JSON.stringify(data),
     };
 
     return (await axios(config)).data;
@@ -1011,36 +1037,186 @@ export class UtilsService {
     return response;
   }
 
-  async getAllClaimsFromTranscript(
+  async relatedContextNews(transcription: string, textContext: string[]) {
+    const parser = new CommaSeparatedListOutputParser();
+
+    const chain = RunnableSequence.from([
+      PromptTemplate.fromTemplate(`Create a comma-separated list of queries to retrieve news about each stock ticker and their related stock markets or indexes. Find semantic associations between the shares/listings to influence the query-building process. Use the provided text_context to make semantic sense of the information and associations. As the stocks might relate to the same industry/index, if needed, look for information about that also.
+
+      {format_instructions} 
+      
+      Here's the transcript: {transcription} 
+      Here's the textContext: {textContext}
+      
+      Find the relationship between the transcript used and the text_context. Create at most 30 encompassing queries. `),
+      new OpenAI({
+        temperature: 0,
+        modelName: 'gpt-4o-mini',
+      }),
+      parser,
+    ]);
+
+    const response = await chain.invoke({
+      transcription,
+      format_instructions: parser.getFormatInstructions(),
+      textContext: textContext.join(' '),
+    });
+
+    this.logger.verbose(response);
+    return response;
+  }
+
+  async getAllStockInformation(
     text: string,
-    title: string,
-    textContent: string[],
+    // title: string,
+    textContent: string,
   ) {
+    const modelTurbo = new OpenAI({
+      temperature: 0,
+      modelName: 'gpt-4o-mini',
+    });
     // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
     const parserList = new CommaSeparatedListOutputParser();
 
     const chain = RunnableSequence.from([
-      PromptTemplate.fromTemplate(`Extract key topics from the transcription and formulate broad, contextually relevant questions for factual verification, presented in a comma-separated list. Review the transcription to understand the main topic and analyze it to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and ensure each integrates into the overall theme of the discussion. For each identified claim, determine the essential elements requiring verification, considering the speaker's intent and the claim's contribution to the overall argument. Formulate broad, contextually relevant questions that are clear, concise, and standalone, ensuring each question can be understood without reference to the transcript. Avoid using exact phrases from the transcript in these questions. Where possible, create follow-up questions related to the transcript using the same rules stated. Instead, focus on related broader topics and supporting evidence surrounding the subject. Ensure each question reflects the broader context and narrative of the transcript, focusing on specific, verifiable details related to the main subject and avoiding direct references to the person or specific claims made. Each question should address a unique aspect of the transcript without redundancy. When dealing with numerical data, do not use commas. For example, write '1580 trillion' instead of '1580 trillion'. Additionally, do not use commas for listing items. Instead, use "and". For example, write 'USA and UK and EU' instead of 'USA, UK, EU'. For lists, write 'apples and oranges and bananas' instead of 'apples, oranges, bananas'. When combining large numbers and lists, write 'In the next 20 years, the population is expected to reach 8500000 in the USA and 67000000 in the UK and 83000000 in Germany' instead of 'In the next 20 years, the population is expected to reach 8500000 in the USA, 67000000 in the UK, and 83000000 in Germany'. Formulate questions in a factual and objective manner, avoiding subjective language, personal opinions, and colloquial expressions. Aim for each question to be contextually complete and interconnected, reflecting the overall narrative of the transcript. Compile the questions into a comma-separated list focused on factual verification and understanding of broader topics related to the main subject, providing a clear view of the claims' factual basis and their relationship to the overall narrative. This list will lay the groundwork for focused exploration in subsequent analysis.
+      PromptTemplate.fromTemplate(`Create a comma-separated list of queries to retrieve news about each stock ticker and their related stock markets or indexes. Find semantic associations between the shares/listings to influence the query-building process. Use the provided text_context to make semantic sense of the information and associations. As the stocks might relate to the same industry/index, if needed, look for information about that also.
 
-      {format_instructions} {title} {transcription} {text_context}`),
+      {format_instructions} 
+      
+      Here's the transcript: {transcription} 
+      Here's the text_context: {text_context}
+      
+      Find the relationship between the transcript used and the text_context. Create at most 30 encompassing queries. `),
       new OpenAI({
         temperature: 0,
-        modelName: 'gpt-4o',
+        modelName: 'gpt-4o-mini',
       }),
       parserList,
     ]);
+
+    const stockQueries = await chain.invoke({
+      transcription: text,
+      // title,
+      format_instructions: parserList.getFormatInstructions(),
+      text_context: textContent,
+    });
+
+    this.logger.verbose(stockQueries);
+    console.log('Done');
+
+    const queryPromiseList = stockQueries.map((query) =>
+      this.contextSearch(query, true),
+    );
+
+    const returnedQueries = await Promise.all(queryPromiseList);
+
+    const compressionQueryPromises = returnedQueries.map(async (query) => {
+      const promptTemplate = PromptTemplate.fromTemplate(
+        'Compress into a single paragrah please, highlighting the most demanding and recent information {query}',
+      );
+
+      const chain = RunnableSequence.from([promptTemplate, modelTurbo]);
+
+      const result = await chain.invoke({ query: JSON.stringify(query) });
+
+      this.logger.verbose(`${query}: ${result}`);
+
+      return result;
+    });
+
+    const compressedQueries = await Promise.all(compressionQueryPromises);
+
+    return compressedQueries;
+  }
+
+  async getAllClaimsFromTranscript(
+    text: string,
+    title: string,
+    textContent: string[],
+    jobType: JobType,
+  ): Promise<string[]> {
+    // With a `CommaSeparatedListOutputParser`, we can parse a comma separated list.
+    const parserList = new CommaSeparatedListOutputParser();
+
+    let chain: RunnableSequence;
+
+    if (jobType === JobType.STOCK) {
+      chain = RunnableSequence.from([
+        PromptTemplate.fromTemplate(`
+        Extract key information from the transcription and text context to formulate detailed and direct search queries that identify why a stock has gone up or down, along with general news surrounding the stock. Review the transcription and text context to understand the main topics, analyze them to identify specific claims, key statistics, and relevant factors. Ensure each search query reflects the broader context and narrative and covers potential news topics thoroughly, including economic policies, political events, and other impactful news.
+
+  Avoid using exact phrases from the transcript in these queries. Create search queries that are clear, concise, and standalone, ensuring each can be understood without reference to the transcript. Compile the queries into a comma-separated list focused on factual verification and understanding of broader topics related to the main subject, providing a clear view of the claims' factual basis and their relationship to the overall narrative.
+
+  Queries should take into account if a stock/position is current up or down. It is not prudent to search for why a stock is up if it's currently down and vice versa.
+
+          When text_context is provided, find the semantic relation between the transcript and the text_context.
+
+          {format_instructions} 
+          
+          Here's the title: {title} 
+          Here's the transcript: {transcription} 
+          Here's the text_context: {text_context}
+
+          The text_context is an array of paragraphs about each stock. It is there to help give us information about each stock in the last 24 hours.
+
+          Limits upon the amount of search queries. For every stock/position, create at least five queries but no more than 10 queries. Therefore if there is 3 stocks, we should have at least 15 queries but no more than 30 queries.
+        
+       `),
+        new OpenAI({
+          temperature: 0,
+          modelName: 'gpt-4o',
+        }),
+        parserList,
+      ]);
+    } else {
+      chain = RunnableSequence.from([
+        PromptTemplate.fromTemplate(`
+      Extract key topics from the transcription and formulate broad, contextually relevant questions for factual verification, presented in a comma-separated list. Review the transcription to understand the main topic and analyze it to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and ensure each integrates into the overall theme of the discussion. For each identified claim, determine the essential elements requiring verification, considering the speaker's intent and the claim's contribution to the overall argument. Formulate broad, contextually relevant questions that are clear, concise, and standalone, ensuring each question can be understood without reference to the transcript. Avoid using exact phrases from the transcript in these questions. Where possible, create follow-up questions related to the transcript using the same rules stated. Instead, focus on related broader topics and supporting evidence surrounding the subject. Ensure each question reflects the broader context and narrative of the transcript, focusing on specific, verifiable details related to the main subject and avoiding direct references to the person or specific claims made. Each question should address a unique aspect of the transcript without redundancy. When dealing with numerical data, do not use commas. For example, write '1580 trillion' instead of '1580 trillion'. Additionally, do not use commas for listing items. Instead, use "and". For example, write 'USA and UK and EU' instead of 'USA, UK, EU'. For lists, write 'apples and oranges and bananas' instead of 'apples, oranges, bananas'. When combining large numbers and lists, write 'In the next 20 years, the population is expected to reach 8500000 in the USA and 67000000 in the UK and 83000000 in Germany' instead of 'In the next 20 years, the population is expected to reach 8500000 in the USA, 67000000 in the UK, and 83000000 in Germany'. Formulate questions in a factual and objective manner, avoiding subjective language, personal opinions, and colloquial expressions. Aim for each question to be contextually complete and interconnected, reflecting the overall narrative of the transcript. Compile the questions into a comma-separated list focused on factual verification and understanding of broader topics related to the main subject, providing a clear view of the claims' factual basis and their relationship to the overall narrative. This list will lay the groundwork for focused exploration in subsequent analysis.
+  
+        {format_instructions} 
+        
+        Here's the title: {title} 
+        Here's the transcript: {transcription} 
+        Here's the text_context: {text_context}
+        
+        When text_context is provided, find the semantic relation between the transcript and the text_context. The transcript will all be contextually related to each other in some capacity, therefore if it makes semantic sense, create a query based upon it. Create at most 50 encompassing queries.`),
+        new OpenAI({
+          temperature: 0,
+          modelName: 'gpt-4o-mini',
+        }),
+        parserList,
+      ]);
+    }
+
+    // chain = RunnableSequence.from([
+    //   PromptTemplate.fromTemplate(`
+    // Extract key topics from the transcription and formulate broad, contextually relevant questions for factual verification, presented in a comma-separated list. Review the transcription to understand the main topic and analyze it to identify specific claims or key statistics. Extract individual claims that are amenable to factual verification and ensure each integrates into the overall theme of the discussion. For each identified claim, determine the essential elements requiring verification, considering the speaker's intent and the claim's contribution to the overall argument. Formulate broad, contextually relevant questions that are clear, concise, and standalone, ensuring each question can be understood without reference to the transcript. Avoid using exact phrases from the transcript in these questions. Where possible, create follow-up questions related to the transcript using the same rules stated. Instead, focus on related broader topics and supporting evidence surrounding the subject. Ensure each question reflects the broader context and narrative of the transcript, focusing on specific, verifiable details related to the main subject and avoiding direct references to the person or specific claims made. Each question should address a unique aspect of the transcript without redundancy. When dealing with numerical data, do not use commas. For example, write '1580 trillion' instead of '1580 trillion'. Additionally, do not use commas for listing items. Instead, use "and". For example, write 'USA and UK and EU' instead of 'USA, UK, EU'. For lists, write 'apples and oranges and bananas' instead of 'apples, oranges, bananas'. When combining large numbers and lists, write 'In the next 20 years, the population is expected to reach 8500000 in the USA and 67000000 in the UK and 83000000 in Germany' instead of 'In the next 20 years, the population is expected to reach 8500000 in the USA, 67000000 in the UK, and 83000000 in Germany'. Formulate questions in a factual and objective manner, avoiding subjective language, personal opinions, and colloquial expressions. Aim for each question to be contextually complete and interconnected, reflecting the overall narrative of the transcript. Compile the questions into a comma-separated list focused on factual verification and understanding of broader topics related to the main subject, providing a clear view of the claims' factual basis and their relationship to the overall narrative. This list will lay the groundwork for focused exploration in subsequent analysis.
+
+    //   {format_instructions}
+
+    //   Here's the title: {title}
+    //   Here's the transcript: {transcription}
+    //   Here's the text_context: {text_context}
+
+    //   When text_context is provided, find the semantic relation between the transcript and the text_context. The transcript will all be contextually related to each other in some capacity, therefore if it makes semantic sense, create a query based upon it. Create at most 50 encompassing queries.`),
+    //   new OpenAI({
+    //     temperature: 0,
+    //     modelName: 'gpt-4o-mini',
+    //   }),
+    //   parserList,
+    // ]);
 
     const test = await chain.invoke({
       transcription: text,
       title,
       format_instructions: parserList.getFormatInstructions(),
       text_context: textContent.join(' '),
+      // instruction: jobInstruction,
     });
 
-    console.log(text);
     this.logger.verbose(test);
-    console.log(textContent);
     console.log('Done');
+
     return test;
   }
 
@@ -1052,6 +1228,7 @@ export class UtilsService {
   async processSearchTermsRxJS(
     searchTerms: string[],
     concurrencyLimit: number,
+    jobType: JobType,
   ): Promise<string[]> {
     console.log(searchTerms);
     const fixedDelay = 0; // Fixed delay for each request
@@ -1061,7 +1238,7 @@ export class UtilsService {
       mergeMap((term, index) => {
         const delayedObservable = of(term).pipe(
           delay(currentDelay), // Apply the current delay
-          concatMap(() => this.serperGoogleSearch(term)), // Perform the search after the delay
+          concatMap(() => this.serperGoogleSearch(term, jobType)), // Perform the search after the delay
         );
 
         // Increment the delay for the next term, or reset if at the concurrency limit
@@ -1111,19 +1288,21 @@ export class UtilsService {
       console.log(error);
     }
 
-    if (!this.useLocalScrapper) {
-      return this.serperGoogleSearch(query);
-    }
+    // if (!this.useLocalScrapper) {
+    //   return this.serperGoogleSearch(query);
+    // }
 
     return [];
   }
 
-  async serperGoogleSearch(query: string): Promise<string[]> {
+  async serperGoogleSearch(query: string, jobType: JobType): Promise<string[]> {
     const suffix = `-site:infowars.com -site:naturalnews.com -site:beforeitsnews.com -site:newspunch.com -site:thesun.co.uk -site:breitbart.com`;
 
-    const data = JSON.stringify({
+    const data: { q: string; tbs?: string } = {
       q: `${query} ${suffix}`,
-    });
+    };
+
+    if (jobType === JobType.STOCK) data.tbs = 'qdr:d';
 
     const config = {
       method: 'post',
@@ -1132,7 +1311,7 @@ export class UtilsService {
         'X-API-KEY': this.serperApi,
         'Content-Type': 'application/json',
       },
-      data: data,
+      data: JSON.stringify(data),
     };
 
     const response = await axios(config);
@@ -1179,4 +1358,8 @@ export class UtilsService {
     const promptTemplate = `Please provide a fact-checking summary for the given content. Determine its trustworthiness and explain the status (Verified/Partially Verified/Unverified) along with the reasons for the chosen status within 280 characters.
     `;
   }
+
+  private stockOutput = JSON.stringify(
+    "Geopolitical Tensions:\n\nTaiwan and Semiconductor Industry: Trump's remarks about Taiwan paying the US for defense and the potential implications for Taiwan's semiconductor dominance have created uncertainty. Taiwan manufactures a significant portion of the world's semiconductors, and any disruption could have a catastrophic effect on the global supply chain and the US economy.\n\nUS-China Trade Relations: Reports of the US considering tighter restrictions on semiconductor technology exports to China have further exacerbated tensions, impacting the stock prices of major chipmakers and related companies.\n\nPolitical Statements:\n\nTrump's Comments: Trump's critical stance on Taiwan and his suggestion that Taiwan should pay the US for defense have raised concerns about US support for Taiwan, leading to market volatility.\n\nUS Defense Policies: The Biden administration's continued support for Taiwan's defense and the sale of military equipment have also contributed to geopolitical tensions.\n\nEconomic Policies and Trade Restrictions:\n\nExport Controls: The US considering severe trade restrictions on semiconductor technology exports to China has led to a significant drop in the stock prices of companies in the semiconductor industry.\n\nDefense Spending: The potential increase in defense spending under the Biden administration could impact market dynamics, particularly for defense stocks.\n\nStock-Specific Analysis\n\nMicrosoft Corp (MSFT)\nReasons: The stock is down 1.33%, likely influenced by the broader market decline and geopolitical tensions. Microsoft's exposure to the tech sector makes it susceptible to market-wide trends.\nOutlook:\nShort Term: Likely to remain volatile due to ongoing geopolitical tensions.\nLong Term: Bullish outlook with predictions of significant growth by 2025, driven by strong fundamentals and market position.\n\nAlphabet Inc Class A (GOOGL)\nReasons: Down 1.58%, affected by the overall market decline and potential impacts on the tech sector from geopolitical tensions.\nOutlook:\nShort Term: Volatility expected due to market conditions.\nLong Term: Positive outlook with steady growth predicted, supported by strong market fundamentals.\n\nApple Inc (AAPL)\nReasons: Down 2.53%, influenced by the broader market decline and potential supply chain disruptions due to geopolitical tensions.\nOutlook:\nShort Term: Volatility expected due to market conditions.\nLong Term: Positive outlook with steady growth predicted, supported by strong market fundamentals.\n\nAmazon.com Inc (AMZN)\nReasons: Down 2.64%, affected by the broader market decline and potential impacts on the tech sector from geopolitical tensions.\nOutlook:\nShort Term: Volatility expected due to market conditions.\nLong Term: Positive outlook with steady growth predicted, supported by strong market fundamentals.\n\nMeta Platforms Inc (META)\nReasons: Down 5.68%, significantly impacted by market volatility and potential regulatory concerns.\nOutlook:\nShort Term: High volatility expected.\nLong Term: Positive outlook with strong growth potential, supported by market position and revenue growth.\n\nMicron Technology Inc (MU)\nReasons: Down 6.27%, heavily impacted by geopolitical tensions and potential export restrictions on semiconductor technology.\nOutlook:\nShort Term: High volatility expected.\nLong Term: Positive outlook with significant growth potential, supported by market demand for semiconductors.\n\nNVIDIA Corp (NVDA)\nReasons: Down 6.62%, affected by geopolitical tensions and potential export restrictions on semiconductor technology.\nOutlook:\nShort Term: High volatility expected.\nLong Term: Positive outlook with significant growth potential, supported by market demand for semiconductors.\n\nSuper Micro Computer Inc (SMCI)\nReasons: Down 6.92%, impacted by broader market decline and potential supply chain disruptions.\nOutlook:\nShort Term: High volatility expected.\nLong Term: Positive outlook with strong growth potential, supported by market demand for computing solutions.\n\nReddit Inc (RDDT)\nReasons: Down 7.42%, affected by broader market decline and potential regulatory concerns.\nOutlook:\nShort Term: High volatility expected.\nLong Term: Uncertain outlook, dependent on market position and regulatory environment.\n\nTaiwan Semiconductor Mfg. Co. Ltd. (TSM)\nReasons: Down 7.98%, heavily impacted by geopolitical tensions and potential supply chain disruptions.\nOutlook:\nShort Term: High volatility expected.\nLong Term: Positive outlook with significant growth potential, supported by market demand for semiconductors.\n\nAdvanced Micro Devices, Inc. (AMD)\nReasons: Down 10.21%, significantly impacted by geopolitical tensions and potential export restrictions on semiconductor technology.\nOutlook:\nShort Term: High volatility expected.\nLong Term: Positive outlook with significant growth potential, supported by market demand for semiconductors.\n\nConclusion\n\nThe recent market movements are primarily driven by geopolitical tensions, particularly related to Taiwan and the semiconductor industry, as well as statements from influential political figures like former President Donald Trump. These factors have created uncertainty and volatility in the market, affecting a wide range of stocks, particularly those in the tech and semiconductor sectors. The long-term outlook for these stocks remains positive, supported by strong market fundamentals and growth potential, but short-term volatility is expected to continue.",
+  );
 }

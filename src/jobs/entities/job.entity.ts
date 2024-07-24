@@ -84,6 +84,7 @@ export enum JobType {
   VIDEO = 'VIDEO',
   TEXT = 'TEXT',
   WEBSITE = 'WEBSITE',
+  STOCK = 'STOCK',
 }
 
 export interface Job {

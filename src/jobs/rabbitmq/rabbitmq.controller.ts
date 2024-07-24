@@ -10,6 +10,7 @@ import { RabbitmqService } from './rabbitmq.service';
 import { CreateRabbitmqDto } from './dto/create-rabbitmq.dto';
 import { UpdateRabbitmqDto } from './dto/update-rabbitmq.dto';
 import { TextOnlyDto } from '../dto/text-only.dto';
+import { StockCheckupJobDto } from '../dto/stock-job-dto';
 const fs = require('fs').promises; // Notice the '.promises'
 
 @Controller()
@@ -85,12 +86,29 @@ export class RabbitmqController {
     console.log('Received newJob event with data:', data);
     try {
       const result = await this.rabbitmqService.textOnlyJob(data);
-      saveJsonToFile('./output.txt', result);
       // acknowledge the message after processing
       channel.ack(originalMsg);
     } catch (error) {
       console.log(error);
       // negatively acknowledge the message in case of error
+      channel.nack(originalMsg);
+    }
+  }
+
+  @EventPattern('stock-checkup')
+  async stockCheckupJob(
+    @Payload() data: StockCheckupJobDto,
+    @Ctx() context: RmqContext,
+  ) {
+    console.log('Stock job recieved');
+    const channel = context.getChannelRef();
+    const originalMsg = context.getMessage();
+
+    try {
+      await this.rabbitmqService.stockCheckupJob(data);
+      channel.ack(originalMsg);
+    } catch (error) {
+      console.log(error)
       channel.nack(originalMsg);
     }
   }
